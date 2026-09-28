@@ -1,4 +1,4 @@
-// Subject Study Guide app: the live website inside a Material Design shell.
+// Proof app: the live website inside a Material Design shell.
 // Site updates reach the app automatically; only the native parts live here.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, Keyboard, Linking, Platform, Share, StyleSheet, View, useColorScheme } from 'react-native';
@@ -117,7 +117,7 @@ function Main({ dark }) {
         <View style={[styles.logo, { backgroundColor: theme.colors.primary }]}>
           <Icon source="school" size={22} color={theme.colors.onPrimary} />
         </View>
-        <Appbar.Content title="Study Guide" titleStyle={styles.title} />
+        <Appbar.Content title="Proof" titleStyle={styles.title} />
         <Appbar.Action icon="refresh" accessibilityLabel="Reload" onPress={() => web.current?.reload()} />
       </Appbar.Header>
 

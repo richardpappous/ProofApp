@@ -44,7 +44,7 @@ export const BRIDGE = `(function(){
     // Backups: WebViews can't download files or use the web clipboard,
     // so hand the data to the phone instead.
     var fname = function (o) {
-      return 'study-guide-' + String(o.name || 'progress').replace(/[^\\w-]+/g, '-') + '-' +
+      return 'proof-backup-' + String(o.name || 'progress').replace(/[^\\w-]+/g, '-') + '-' +
         new Date().toISOString().slice(0, 10) + '.json';
     };
     copyBackup = function () {

@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Subject Study Guide</title>
+<title>Proof: math &amp; science practice</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Study Guide">
+<meta name="apple-mobile-web-app-title" content="Proof">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#f5f8fc" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0e1422" media="(prefers-color-scheme: dark)">
-<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=2">
-<link rel="icon" type="image/png" href="apple-touch-icon.png?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=3">
+<link rel="icon" type="image/png" href="apple-touch-icon.png?v=3">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600&display=swap">
@@ -54,6 +54,7 @@ body{
 body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top,0px);background:var(--paper);z-index:6}
 .wrap{max-width:780px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
 header h1{font-family:var(--display);font-weight:800;font-size:clamp(28px,6vw,40px);line-height:1.05;margin:0;letter-spacing:-.01em;text-wrap:balance}
+header .tagline{margin:4px 0 0;color:var(--muted);font-weight:700;font-size:15px}
 .nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;display:grid;grid-template-columns:minmax(150px,230px) minmax(0,1fr) auto;grid-template-areas:"subj views who";align-items:center;gap:8px;background:var(--paper);padding-block:8px;margin-block:-8px}
 .nav .subjpick{grid-area:subj;max-width:none}.nav .views{grid-area:views}.whobox{grid-area:who;position:relative}
 @media (max-width:640px){.nav{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"subj who" "views views"}}
@@ -326,7 +327,8 @@ details.fold[open]{padding-bottom:20px}
 <body>
 <div class="wrap">
   <header>
-    <h1>Subject Study Guide</h1>
+    <h1>Proof</h1>
+    <p class="tagline">Math &amp; science practice</p>
   </header>
 
   <div class="nav">
@@ -385,7 +387,7 @@ details.fold[open]{padding-bottom:20px}
 <div class="sheet" id="fbsheet" role="dialog" aria-modal="true" aria-labelledby="fbtitle" hidden>
   <form class="card sheetcard" id="fbform" novalidate>
     <div class="row" style="flex-wrap:nowrap"><h2 id="fbtitle">Send feedback</h2><button class="xbtn" id="fbclose" type="button" aria-label="Close">✕</button></div>
-    <p class="note">Help improve the Subject Study Guide. Report an error, suggest a feature or ask a question, and your message will be reviewed by the site’s developer.</p>
+    <p class="note">Help improve Proof. Report an error, suggest a feature or ask a question, and your message will be reviewed by the site’s developer.</p>
     <label class="field">Category<select id="fbcat">
       <option value="">Select a category…</option>
       <option>Incorrect answer or solution</option>
@@ -2265,7 +2267,7 @@ function bkWhen(){const last=Store.data.lastBackup;if(!last)return 'No backup ye
   const days=Math.floor((Date.now()-last)/86400000);return `Last backup: ${days===0?'today':days===1?'yesterday':days+' days ago'}.${days>=7?' Consider saving a fresh one.':''}`}
 function bkMsg(m,cls){BK.msg=m;BK.cls=cls||'neutral';renderProgress()}
 function markBackup(){Store.data.lastBackup=Date.now();Store.changed()}
-async function saveBackupFile(){const o=backupObj(),txt=JSON.stringify(o),fn=`study-guide-${String(o.name||'progress').replace(/[^\w-]+/g,'-')}-${new Date().toISOString().slice(0,10)}.json`;
+async function saveBackupFile(){const o=backupObj(),txt=JSON.stringify(o),fn=`proof-backup-${String(o.name||'progress').replace(/[^\w-]+/g,'-')}-${new Date().toISOString().slice(0,10)}.json`;
   const inViewer=!!(window.claude&&typeof window.claude.use==='function');
   if(inViewer){let dl=null;try{dl=await window.claude.use('downloads')}catch(e){}
     if(!dl)return bkMsg('Saving files isn’t available in this view. Use Copy backup code instead.','neutral');
@@ -2278,7 +2280,7 @@ async function saveBackupFile(){const o=backupObj(),txt=JSON.stringify(o),fn=`st
 function copyBackup(){const code='SSG1:'+b64e(JSON.stringify(backupObj()));
   const fail=()=>{BK.code=code;markBackup();bkMsg('Copy didn’t work here. The code is below: select all of it and copy it yourself.','neutral');const t=$('bkcode');if(t){t.focus();t.select()}};
   try{navigator.clipboard.writeText(code).then(()=>{BK.code='';markBackup();bkMsg('Backup code copied. Paste it somewhere safe, like a note or a message to yourself.','good')},fail)}catch(e){fail()}}
-function loadBackupText(txt){const o=parseBackup(txt);if(!o)return bkMsg('That isn’t a Subject Study Guide backup. Check that you copied the whole code or picked the right file.','bad');BK.pending=o;BK.msg='';renderProgress()}
+function loadBackupText(txt){const o=parseBackup(txt);if(!o)return bkMsg('That isn’t a Proof backup. Check that you copied the whole code or picked the right file.','bad');BK.pending=o;BK.msg='';renderProgress()}
 function mergeInto(a,b){for(const k in b.topics){const x=a.topics[k],y=b.topics[k];if(!x){a.topics[k]=y;continue}x.c+=y.c;x.t+=y.t;x.r=[...(y.r||[]),...(x.r||[])].slice(-10);x.mn=(x.mn||0)+(y.mn||0);x.m=[...(y.m||[]),...(x.m||[])].slice(-10);x.last=Math.max(x.last||0,y.last||0)}
   const ids=new Set(a.tests.map(t=>t.id));b.tests.forEach(t=>{if(!ids.has(t.id))a.tests.push(t)});a.tests.sort((p,q)=>q.ts-p.ts);a.tests=a.tests.slice(0,60);
   const pid=new Set(a.presets.map(p=>p.id));b.presets.forEach(p=>{if(!pid.has(p.id))a.presets.push(p)});
@@ -2605,7 +2607,7 @@ $('cmgr').addEventListener('click',e=>{const b=e.target.closest('[data-cm]');if(
     case 'copycode':{const code=CM.packed;if(!code)return;
       copyText(code,()=>{CM.showCode=false;cmSay('Share code copied. Paste it in a message or email.','good');renderMgr()},()=>{CM.showCode=true;cmSay('Copy didn’t work here. Select all of the code below and copy it yourself.');renderMgr()});return}
     case 'sendcode':{const code=CM.packed,sub=findSub(id);if(!code||!navigator.share)return;
-      navigator.share({title:`${sub.name} (Subject Study Guide)`,text:`Here’s my “${sub.name}” subject for Subject Study Guide. Copy this whole message, then paste it in My subjects → Add a shared subject.\n\n${code}`}).catch(()=>{});return}
+      navigator.share({title:`${sub.name} (Proof)`,text:`Here’s my “${sub.name}” subject for Proof, the study app. Copy this whole message, then paste it in My subjects → Add a shared subject.\n\n${code}`}).catch(()=>{});return}
     case 'savefile':{const sub=findSub(id),ok=downloadFile(`subject-${sub.name.replace(/[^\w-]+/g,'-')}.json`,JSON.stringify({app:'subject-study-guide',type:'subject',v:1,subject:sub}));
       cmSay(ok?'Subject file saved. Send it to anyone, and they can add it with Choose a subject file.':'Saving a file didn’t work here. Use Copy share code instead.',ok?'good':'neutral');break}
     case 'del':CM.delId=CM.delId===id?null:id;CM.shareId=null;CM.msg='';break;
@@ -2678,7 +2680,7 @@ $('fbform').onsubmit=async e=>{e.preventDefault();
   if(!text){fbOut('Please add some details.','neutral');return $('fbtext').focus()}
   if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){fbOut('That email doesn’t look right. Fix it or leave it blank.','neutral');return $('fbemail').focus()}
   btn.disabled=true;btn.textContent='Sending…';fbOut('');
-  const body={access_key:FEEDBACK_KEY,subject:`Study Guide feedback: ${cat}`,from_name:'Subject Study Guide',
+  const body={access_key:FEEDBACK_KEY,subject:`Proof feedback: ${cat}`,from_name:'Proof',
     message:`Category: ${cat}\n\n${text}`+($('fbctxon').checked?'\n\n---\n'+feedbackContext():'')};
   if(email)body.email=email;
   try{const r=await fetch('https://api.web3forms.com/submit',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify(body)});
