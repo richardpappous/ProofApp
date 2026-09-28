@@ -168,9 +168,23 @@ select{font:600 15px var(--body);padding:9px 12px;border:1px solid var(--line);b
 .term h3{margin:0;font-family:var(--display);font-weight:600;font-size:19px;line-height:1.2}
 .term .def{margin:0;font-size:15px}
 .term .ex{margin:0;font-family:var(--mono);font-size:13.5px;color:var(--muted)}
-.quiz .term{cursor:pointer}
-.quiz .term:not(.open) .def,.quiz .term:not(.open) .ex{display:none}
-.quiz .term:not(.open)::after{content:"Tap to reveal";font-size:13px;color:var(--accent);font-weight:700}
+/* flip cards (Quiz me, Study flashcards). Both faces sit in one grid cell, so the card is as tall as its longer side. */
+.flip{perspective:1200px;cursor:pointer;background:none;border:0;padding:0;border-radius:12px;-webkit-tap-highlight-color:transparent}
+.flip .inner{display:grid;height:100%;transition:transform .55s cubic-bezier(.3,.7,.25,1);transform-style:preserve-3d;-webkit-transform-style:preserve-3d}
+.flip.flipped .inner{transform:rotateY(180deg)}
+.flip .face{grid-area:1/1;display:flex;flex-direction:column;justify-content:center;gap:8px;min-height:140px;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--surface);backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.flip .front{transform:rotateY(0deg)}
+.flip .back{transform:rotateY(180deg);border-color:var(--accent)}
+.flip h3{margin:0;font-family:var(--display);font-weight:600;font-size:19px;line-height:1.2}
+.flip .reveal{margin-top:auto;font-size:13px;font-weight:700;color:var(--accent)}
+.flip:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.flip.big .face{min-height:260px;padding:24px;align-items:center;text-align:center}
+.flip.big h3{font-size:clamp(24px,6vw,32px)}
+.flip.big .def{font-size:18px}
+.flip.big .reveal{margin-top:12px}
+.fcdef{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;font-size:17px}
+.fcdef img{display:block;max-width:100%;max-height:240px;border-radius:8px;margin-top:8px}
+@media (prefers-reduced-motion:reduce){.flip .inner{transition:none}}
 .toggle{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;cursor:pointer}
 .toggle input{width:20px;height:20px;accent-color:var(--accent)}
 .count{color:var(--muted);font-size:14px}
@@ -342,12 +356,16 @@ details.fold[open]{padding-bottom:20px}
   <section id="progress" class="wrap" style="gap:14px;width:100%" hidden></section>
 
   <section id="terms" class="wrap" style="gap:14px;width:100%" hidden>
+    <div class="actions" id="fcbar"><button class="btn" id="fcstudy" type="button">Study flashcards</button><button class="btn ghost" id="fctest" type="button">Flashcard test</button></div>
+    <div id="fcarea" class="wrap" style="gap:14px;width:100%" hidden></div>
+    <div id="tbrowse" class="wrap" style="gap:14px;width:100%">
     <input class="search" id="tsearch" type="search" placeholder="Search this subject's terms" aria-label="Search terms">
     <div class="row">
       <span class="count" id="tcount"></span>
       <label class="toggle"><input type="checkbox" id="quiz"> Quiz me</label>
     </div>
     <div class="terms" id="tlist"></div>
+    </div>
   </section>
 
   <section id="formulas" class="wrap" style="gap:12px;width:100%" hidden></section>
@@ -1839,6 +1857,7 @@ subjEl.addEventListener('change',e=>{const v=e.target.value;if(v==='__manage'){s
 function setSubj(id){
   subj=id;topic='__smart';tq='';$('tsearch').value='';
   subjEl.value=id;$('level').hidden=isCustom(id);  // custom questions have no Easy/Hard versions
+  if(FC.mode)fcExit();
   const sel=$('topic');sel.innerHTML='<option value="__smart">Smart mix</option><option value="All">All topics</option>'+Object.keys(GEN[id]).map(k=>`<option>${k}</option>`).join('');
   $('pnote').textContent=NOTES[id];
   newProblem();renderTerms();renderFormulas();
@@ -1923,12 +1942,79 @@ function nextFromCheck(){newProblem();const r=$('pcard').getBoundingClientRect()
 const tl=$('tlist');
 function renderTerms(){
   const q=tq.toLowerCase(),list=TERMS[subj].filter(t=>!q||(t[0]+' '+t[1]).toLowerCase().includes(q));
+  $('fcbar').hidden=!!FC.mode||!TERMS[subj].length;$('fctest').hidden=TERMS[subj].length<2;
   $('tcount').textContent=`${list.length} term${list.length===1?'':'s'}`;
-  tl.innerHTML=list.map(t=>`<div class="term" tabindex="0"><h3>${t[0]}</h3><p class="def">${t[1]}</p>${t[2]?`<p class="ex">${t[2]}</p>`:''}</div>`).join('')||
+  tl.innerHTML=list.map(t=>tl.classList.contains('quiz')?flipCardHTML(t,''):`<div class="term" tabindex="0"><h3>${t[0]}</h3><p class="def">${t[1]}</p>${t[2]?`<p class="ex">${t[2]}</p>`:''}</div>`).join('')||
     (TERMS[subj].length?'<p class="note">No terms match that search.</p>':'<p class="note">No flashcards yet. Add some from My subjects in the name menu.</p>');
 }
-tl.addEventListener('click',e=>{const t=e.target.closest('.term');if(t&&tl.classList.contains('quiz'))t.classList.toggle('open')});
-tl.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.classList.contains('term')&&tl.classList.contains('quiz')){e.preventDefault();e.target.classList.toggle('open')}});
+/* ---------- flashcards: flip cards, Study flashcards, Flashcard test ---------- */
+// A card is a TERMS entry [term, definition, example]. The front shows the term; tapping flips it to the back.
+function flipCardHTML(t,cls){return `<div class="flip ${cls}" tabindex="0" role="button" aria-pressed="false" aria-label="Flashcard. Tap to reveal the answer.">
+  <div class="inner"><div class="face front"><h3>${t[0]}</h3><span class="reveal">Tap to reveal answer</span></div>
+  <div class="face back" aria-hidden="true"><p class="def" style="margin:0">${t[1]}</p>${t[2]?`<p class="ex" style="margin:0">${t[2]}</p>`:''}<span class="reveal">Tap to flip back</span></div></div></div>`}
+function flipCard(el){const on=!el.classList.contains('flipped');el.classList.toggle('flipped',on);el.setAttribute('aria-pressed',String(on));
+  el.querySelector('.front').setAttribute('aria-hidden',String(on));el.querySelector('.back').setAttribute('aria-hidden',String(!on));return on}
+tl.addEventListener('click',e=>{const t=e.target.closest('.flip');if(t)flipCard(t)});
+tl.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.classList.contains('flip')){e.preventDefault();flipCard(e.target)}});
+const FC={mode:null,deck:[],i:0,flipped:false,known:[],missed:[],test:null};
+function fcShow(on){$('fcarea').hidden=!on;$('tbrowse').hidden=on;$('fcbar').hidden=on}
+function fcExit(){FC.mode=null;FC.test=null;fcShow(false);$('fcarea').innerHTML=''}
+function fcStudy(cards){FC.mode='study';FC.deck=shuffle(cards);FC.i=0;FC.flipped=false;FC.known=[];FC.missed=[];fcShow(true);fcRender();window.scrollTo({top:0})}
+function fcTestSetup(){FC.mode='testsetup';fcShow(true);fcRender();window.scrollTo({top:0})}
+function fcTestStart(n,cards){const deck=shuffle(cards).slice(0,n),all=TERMS[subj];
+  FC.test={items:deck.map(t=>{const others=shuffle(all.filter(o=>o[0]!==t[0])).slice(0,3),choices=shuffle([t,...others]);return{card:t,choices,correct:choices.indexOf(t),pick:null}}),i:0,n};
+  FC.mode='test';fcRender();window.scrollTo({top:0})}
+function fcRender(){const el=$('fcarea'),name=subjName(subj),head=(title,right)=>`<div class="row"><h2 class="h2">${title}</h2>${right||'<button class="linkbtn" type="button" data-fc="exit">Back to terms</button>'}</div>`;
+  if(FC.mode==='study'){
+    if(FC.i>=FC.deck.length){const k=FC.known.length,n=FC.deck.length,p=Math.round(100*k/n);
+      el.innerHTML=`${head('Study flashcards')}<div class="card"><div class="eyebrow">${name} · finished</div>
+        <div class="row" style="align-items:flex-end"><div><div class="score-big">${k} / ${n}</div><div class="sub">cards you knew</div></div><span class="pill ${scoreCls(p)}">${p}%</span></div>
+        <div class="actions">${FC.missed.length?`<button class="btn" type="button" data-fc="studymissed">Study the ${FC.missed.length} I missed</button>`:''}<button class="btn${FC.missed.length?' ghost':''}" type="button" data-fc="studyall">Start over</button><button class="btn ghost" type="button" data-fc="exit">Back to terms</button></div></div>`;return}
+    const t=FC.deck[FC.i];
+    el.innerHTML=`${head('Study flashcards')}
+      <div class="prog" aria-hidden="true"><span style="width:${100*FC.i/FC.deck.length}%"></span></div>
+      <p class="count" style="margin:0">Card ${FC.i+1} of ${FC.deck.length} · ${FC.known.length} known</p>
+      ${flipCardHTML(t,'big')}
+      <div class="actions" id="fcacts" style="justify-content:center">${fcStudyActs()}</div>`;
+    return}
+  if(FC.mode==='testsetup'){const n=TERMS[subj].length,opts=[10,20].filter(x=>x<n);
+    el.innerHTML=`${head('Flashcard test')}<div class="card"><div><h3 class="h3">${name}</h3><p class="sub">You’ll see a definition and pick the matching term from ${Math.min(4,n)} choices. You get your score at the end.</p></div>
+      <div class="actions">${opts.map(x=>`<button class="btn" type="button" data-fc="teststart" data-n="${x}">${x} questions</button>`).join('')}<button class="btn${opts.length?' ghost':''}" type="button" data-fc="teststart" data-n="${n}">All ${n} cards</button></div></div>`;return}
+  if(FC.mode==='test'){const T2=FC.test;
+    if(T2.i>=T2.items.length){const miss=T2.items.filter(q=>q.pick!==q.correct),s=T2.items.length-miss.length,p=Math.round(100*s/T2.items.length);
+      el.innerHTML=`${head('Flashcard test')}<div class="card"><div class="eyebrow">${name} · results</div>
+        <div class="row" style="align-items:flex-end"><div><div class="score-big">${s} / ${T2.items.length}</div><div class="sub">${p}% correct</div></div><span class="pill ${scoreCls(p)}">${p>=85?'Strong':p>=60?'Getting there':'Needs work'}</span></div>
+        ${miss.length?`<div><h3 class="h3">To review</h3>${miss.map(q=>`<div class="hrow"><div><b>${q.card[0]}</b><div class="count">${q.card[1]}</div></div></div>`).join('')}</div>`:'<p class="sub">Perfect score!</p>'}
+        <div class="actions">${miss.length?`<button class="btn" type="button" data-fc="studytestmissed">Study the ${miss.length} I missed</button>`:''}<button class="btn${miss.length?' ghost':''}" type="button" data-fc="teststart" data-n="${T2.n}">Retake with a new order</button><button class="btn ghost" type="button" data-fc="exit">Back to terms</button></div></div>`;return}
+    const q=T2.items[T2.i],done=q.pick!==null;
+    el.innerHTML=`${head('Flashcard test','<span class="count">'+`Question ${T2.i+1} of ${T2.items.length}`+'</span>')}
+      <div class="prog" aria-hidden="true"><span style="width:${100*T2.i/T2.items.length}%"></span></div>
+      <p class="askline" style="margin:0">Which term matches this definition?</p>
+      <div class="fcdef">${q.card[1]}${q.card[2]?`<p class="ex" style="margin:8px 0 0">${q.card[2]}</p>`:''}</div>
+      <div class="choices" role="group" aria-label="Answer choices">${q.choices.map((c,i)=>`<button type="button" class="choice${done&&i===q.correct?' right':''}${done&&i===q.pick&&i!==q.correct?' wrong':''}" data-fc="pick" data-i="${i}"${done?' disabled':''}><span class="cl">${'ABCD'[i]}</span><span>${c[0]}</span></button>`).join('')}</div>
+      ${done?`<div class="fb ${q.pick===q.correct?'good':'bad'}">${q.pick===q.correct?'Correct!':`Not quite. The answer is ${q.card[0]}.`}</div>
+        <div class="actions"><button class="btn" type="button" data-fc="next">${T2.i===T2.items.length-1?'See results':'Next question →'}</button><button class="linkbtn" type="button" data-fc="exit">Quit test</button></div>`
+        :'<div class="actions"><button class="linkbtn" type="button" data-fc="exit">Quit test</button></div>'}`;
+    if(done)el.querySelector('[data-fc="next"]').focus({preventScroll:true})}}
+// Buttons under the study card. Flipping only swaps these, so the card itself animates instead of being redrawn.
+const fcStudyActs=()=>FC.flipped?`<button class="btn ghost" type="button" data-fc="missed">Still learning</button><button class="btn" type="button" data-fc="known">Got it</button>`
+  :'<button class="btn ghost" type="button" data-fc="flip">Flip card</button>';
+function fcFlip(card){FC.flipped=flipCard(card);$('fcacts').innerHTML=fcStudyActs()}
+$('fcstudy').onclick=()=>{if(TERMS[subj].length)fcStudy(TERMS[subj])};
+$('fctest').onclick=()=>{if(TERMS[subj].length>=2)fcTestSetup()};
+$('fcarea').addEventListener('click',e=>{const b=e.target.closest('[data-fc]'),card=e.target.closest('.flip');
+  if(!b&&card&&FC.mode==='study')return fcFlip(card);
+  if(!b)return;const a=b.dataset.fc;
+  if(a==='exit')return fcExit();
+  if(a==='flip')return fcFlip($('fcarea').querySelector('.flip'));
+  if(a==='known'||a==='missed'){(a==='known'?FC.known:FC.missed).push(FC.deck[FC.i]);FC.i++;FC.flipped=false;return fcRender()}
+  if(a==='studymissed')return fcStudy(FC.missed);
+  if(a==='studyall')return fcStudy(TERMS[subj]);
+  if(a==='studytestmissed')return fcStudy(FC.test.items.filter(q=>q.pick!==q.correct).map(q=>q.card));
+  if(a==='teststart')return fcTestStart(+b.dataset.n,TERMS[subj]);
+  if(a==='pick'){const q=FC.test.items[FC.test.i];if(q.pick===null){q.pick=+b.dataset.i;fcRender()}return}
+  if(a==='next'){FC.test.i++;fcRender();window.scrollTo({top:0})}});
+$('fcarea').addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.classList.contains('flip')&&FC.mode==='study'){e.preventDefault();fcFlip(e.target)}});
 $('tsearch').addEventListener('input',e=>{tq=e.target.value;renderTerms()});
 $('quiz').addEventListener('change',e=>{tl.classList.toggle('quiz',e.target.checked);renderTerms()});
 function renderFormulas(){
@@ -2415,6 +2501,7 @@ function appBack(){  // phone back button: close the top-most panel. Returns tru
   if(!$('cmgr').hidden){if(CM.screen==='item'){CM.screen='edit';CM.draft=null;CM.msg=''}else if(CM.screen==='edit'){CM.screen='list';CM.msg=''}else{closeMgr();return true}renderMgr();return true}
   if(!$('fbsheet').hidden){closeFeedback();return true}
   if(WM.open){closeMenu();return true}
+  if(FC.mode&&view==='terms'){fcExit();return true}
   return false}
 $('cmgr').addEventListener('keydown',e=>{if(e.key==='Escape'&&e.target.tagName!=='TEXTAREA')appBack()});
 $('cmgr').addEventListener('submit',e=>{if(e.target.id!=='cmnewf')return;e.preventDefault();const name=cleanName($('cmname').value,40);
