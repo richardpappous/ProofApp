@@ -2148,7 +2148,7 @@ window.addEventListener('beforeunload',e=>{if(T.active){saveActive();if(T.active
 /* ---------- feedback (student menu → Send feedback) ---------- */
 // Messages are emailed to the site owner by Web3Forms (web3forms.com). The access key is meant to be public:
 // it can only send to the owner's inbox, and the address itself never appears here. Empty key = menu item hidden.
-const FEEDBACK_KEY='';
+const FEEDBACK_KEY='45006a38-a39d-4081-a950-ec9e063e92e5';
 const plain=s=>String(s||'').replace(/<span class="f"><span>(.*?)<\/span><span>(.*?)<\/span><\/span>/g,'($1)/($2)')
   .replace(/<sup>(.*?)<\/sup>/g,'^$1').replace(/<sub>(.*?)<\/sub>/g,'_$1').replace(/\((\w+|\?)\)/g,'$1').replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
 function feedbackContext(){
