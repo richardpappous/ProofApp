@@ -376,7 +376,7 @@ details.fold[open]{padding-bottom:20px}
 <nav class="tabbar" id="tabbar" aria-label="Sections">
   <button type="button" data-view="practice"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg></span>Practice</button>
   <button type="button" data-view="terms"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11"/></svg></span>Terms</button>
-  <button type="button" data-view="formulas"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 5H6l6 7-6 7h12"/></svg></span>Formulas</button>
+  <button type="button" data-view="formulas"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 5H6l6 7-6 7h12"/></svg></span><span class="lbl">Formulas</span></button>
   <button type="button" data-view="tests"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M9 13l2 2 4-4"/></svg></span>Tests</button>
   <button type="button" data-view="progress"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V11M12 20V5M19 20v-7"/></svg></span>Progress</button>
 </nav>
@@ -1861,6 +1861,7 @@ function setSubj(id){
   subj=id;topic='__smart';tq='';$('tsearch').value='';
   subjEl.value=id;$('level').hidden=isCustom(id);  // custom questions have no Easy/Hard versions
   if(FC.mode)fcExit();
+  syncAddTab();
   const sel=$('topic');sel.innerHTML='<option value="__smart">Smart mix</option><option value="All">All topics</option>'+Object.keys(GEN[id]).map(k=>`<option>${k}</option>`).join('');
   $('pnote').textContent=NOTES[id];
   newProblem();renderTerms();renderFormulas();
@@ -2021,7 +2022,7 @@ $('fcarea').addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.
 $('tsearch').addEventListener('input',e=>{tq=e.target.value;renderTerms()});
 $('quiz').addEventListener('change',e=>{tl.classList.toggle('quiz',e.target.checked);renderTerms()});
 function renderFormulas(){
-  if(!FORM[subj].length){$('formulas').innerHTML='<p class="note">Subjects you make don’t have a formula sheet. Put formulas in flashcards, and they’ll show up in Terms.</p>';return}
+  if(isCustom(subj))return renderAddTab();  // custom subjects get an Add tab instead of a formula sheet
   $('formulas').innerHTML=FORM[subj].map((g,i)=>`<details class="fgroup"${i<2?' open':''}><summary>${g[0]}</summary><div class="ftable">${g[1].map(r=>`<div>${r[0]}</div><div>${r[1]}</div>`).join('')}</div></details>`).join('');
 }
 
@@ -2411,13 +2412,14 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 window.addEventListener('pagehide',()=>{if(T.active)saveActive()});
 window.addEventListener('beforeunload',e=>{if(T.active){saveActive();if(T.active.limit&&!updating){e.preventDefault();e.returnValue=''}}});
 /* ---------- My subjects panel (create, edit, share, import custom subjects) ---------- */
-const CM={screen:'list',sid:null,draft:null,msg:'',cls:'neutral',creating:false,importOpen:false,shareId:null,shareCode:'',delId:null,delItem:null};
-const TYPE_LABEL={text:'Typed answer',mc:'Multiple choice',card:'Flashcard'};
+const CM={key:'cm',screen:'list',sid:null,draft:null,msg:'',cls:'neutral',creating:false,importOpen:false,shareId:null,shareCode:'',delId:null,delItem:null};
 function openMgr(screen,sid){Object.assign(CM,{screen:screen||'list',sid:sid||null,draft:null,msg:'',creating:false,importOpen:false,shareId:null,shareCode:'',delId:null,delItem:null});
   $('cmgr').hidden=false;document.body.style.overflow='hidden';renderMgr()}
 function closeMgr(){$('cmgr').hidden=true;document.body.style.overflow='';CM.draft=null}
 function cmSay(m,cls){CM.msg=m;CM.cls=cls||'neutral'}
-const cmMsg=()=>CM.msg?`<div class="fb ${CM.cls}" role="status">${CM.msg}</div>`:'';
+const sayIn=(S,m,cls)=>{S.msg=m;S.cls=cls||'neutral'};
+const msgHTML=S=>S.msg?`<div class="fb ${S.cls}" role="status">${S.msg}</div>`:'';
+const cmMsg=()=>msgHTML(CM);
 const noSpace='There isn’t enough storage space for that. Remove some pictures or subjects and try again.';
 function renderMgr(){const b=$('cmbody');
   if(CM.screen==='item'&&CM.draft&&findSub(CM.sid))b.innerHTML=mgrItem();
@@ -2426,7 +2428,7 @@ function renderMgr(){const b=$('cmbody');
   $('cmgr').scrollTop=0}
 function mgrList(){const used=JSON.stringify(CUS).length/1e6;
   return `<div class="phead"><h2 id="cmtitle">My subjects</h2><button class="xbtn" type="button" data-cm="close" aria-label="Close">✕</button></div>
-  <p class="note">Make your own subjects with typed-answer questions, multiple choice, flashcards and pictures. They’re saved on this device for every student, included in backups, and can be shared with a code.</p>
+  <p class="note">Make your own subjects with open-ended and multiple-choice questions, flashcards and pictures. They’re saved on this device for every student, included in backups, and can be shared with a code. When you’re on one of your subjects, the <b>Add</b> tab is the quickest way to add questions.</p>
   ${cmMsg()}
   <div class="actions"><button class="btn" type="button" data-cm="new">Create a subject</button><button class="btn ghost" type="button" data-cm="import">Add a shared subject</button></div>
   ${CM.creating?`<form class="card" id="cmnewf"><label class="field">Subject name<input type="text" id="cmname" maxlength="40" placeholder="e.g. Spanish vocabulary" autocomplete="off"></label>
@@ -2447,59 +2449,92 @@ function mgrList(){const used=JSON.stringify(CUS).length/1e6;
         <div class="actions"><button class="btn" type="button" data-cm="delyes" data-id="${s.id}">Delete</button><button class="btn ghost" type="button" data-cm="delno">Cancel</button></div></div>`:''}</div>`}).join('')
     :'<div class="card"><p class="sub" style="margin:0">You haven’t made any subjects yet. Create one, or add one someone shared with you.</p></div>'}
   <p class="note">Storage used by your subjects: ${used<0.1?'under 0.1':used.toFixed(1)} MB of ${CUS_LIMIT/1e6} MB.</p>`}
-function mgrEdit(){const s=findSub(CM.sid),qs=s.items.filter(i=>i.type!=='card'),cards=s.items.filter(i=>i.type==='card'),groups={};
-  qs.forEach(i=>(groups[i.topic]=groups[i.topic]||[]).push(i));
-  const row=(it,text)=>`<div class="cmrow"><div class="cmprev">${it.type==='card'?'':`<span class="tag soft">${it.type==='mc'?'Choice':'Typed'}</span>`}${it.img?'<span aria-label="has a picture" title="Has a picture">🖼</span>':''}<span class="t">${esc(text)}</span></div>
-    <div class="actions"><button class="linkbtn" type="button" data-cm="edititem" data-id="${it.id}">Edit</button><button class="linkbtn" type="button" data-cm="delitem" data-id="${it.id}">Delete</button></div></div>
-    ${CM.delItem===it.id?`<div class="fb bad" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-weight:400">Delete this ${it.type==='card'?'flashcard':'question'}?<div class="actions"><button class="btn" type="button" data-cm="delitemyes" data-id="${it.id}">Delete</button><button class="btn ghost" type="button" data-cm="delitemno">Cancel</button></div></div>`:''}`;
+function mgrEdit(){const s=findSub(CM.sid);
   return `<div class="phead"><button class="linkbtn" type="button" data-cm="back">← My subjects</button><button class="xbtn" type="button" data-cm="close" aria-label="Close">✕</button></div>
   <h2 id="cmtitle">${s.name}</h2>
   <label class="field">Subject name<input type="text" id="cmrename" maxlength="40" value="${s.name}" autocomplete="off"></label>
   ${cmMsg()}
-  <div class="actions"><button class="btn" type="button" data-cm="additem" data-type="text">+ Question</button><button class="btn ghost" type="button" data-cm="additem" data-type="card">+ Flashcard</button><button class="btn ghost" type="button" data-cm="practice" data-id="${s.id}">Practice</button></div>
-  <div class="card"><h3 class="h3">Questions <span class="count">${qs.length}</span></h3>
+  <div class="actions"><button class="btn" type="button" data-cm="additem" data-kind="q">+ Question</button><button class="btn ghost" type="button" data-cm="additem" data-kind="card">+ Flashcard</button><button class="btn ghost" type="button" data-cm="practice" data-id="${s.id}">Practice</button></div>
+  ${itemListHTML(CM)}`}
+function mgrItem(){const s=findSub(CM.sid),d=CM.draft,isNew=!s.items.some(i=>i.id===d.id);
+  return `<div class="phead"><button class="linkbtn" type="button" data-cm="backedit">← ${s.name}</button><button class="xbtn" type="button" data-cm="close" aria-label="Close">✕</button></div>
+  <h2 id="cmtitle">${isNew?'New':'Edit'} ${d.kind==='card'?'flashcard':'question'}</h2>
+  ${itemFormHTML(CM)}
+  <div class="actions"><button class="btn" type="button" data-cm="saveitem">Save</button><button class="btn ghost" type="button" data-cm="saveitem" data-more="1">Save and add another</button><button class="linkbtn" type="button" data-cm="backedit">Cancel</button></div>`}
+
+/* ---------- question & flashcard editor (shared by the My subjects panel and the Add tab) ---------- */
+// S is the editor's state: CM for the panel, AD for the Add tab. Fields use data-f attributes (not ids)
+// because both editors can be on the page at once.
+// A question with wrong answers is saved as multiple choice (type 'mc'); without them it's open-ended ('text').
+function blankDraft(kind,topic){return{id:newId('i'),kind,topic:topic||'',q:'',ans:'',wrong:[],alt:[],explain:'',term:'',def:'',img:''}}
+function draftFromItem(it){const d={...blankDraft(it.type==='card'?'card':'q',it.topic),id:it.id,img:it.img||''};
+  if(it.type==='card')return{...d,term:it.term,def:it.def};
+  Object.assign(d,{q:it.q,explain:it.explain||''});
+  if(it.type==='mc')return{...d,ans:it.choices[it.correct],wrong:it.choices.filter((c,i)=>i!==it.correct)};
+  return{...d,ans:it.ans,alt:[...(it.alt||[])]}}
+function itemListHTML(S){const s=findSub(S.sid),qs=s.items.filter(i=>i.type!=='card'),cards=s.items.filter(i=>i.type==='card'),groups={};
+  qs.forEach(i=>(groups[i.topic]=groups[i.topic]||[]).push(i));
+  const row=(it,text)=>`<div class="cmrow"><div class="cmprev">${it.type==='card'?'':`<span class="tag soft">${it.type==='mc'?'Choice':'Typed'}</span>`}${it.img?'<span aria-label="has a picture" title="Has a picture">🖼</span>':''}<span class="t">${esc(text)}</span></div>
+    <div class="actions"><button class="linkbtn" type="button" data-cm="edititem" data-id="${it.id}">Edit</button><button class="linkbtn" type="button" data-cm="delitem" data-id="${it.id}">Delete</button></div></div>
+    ${S.delItem===it.id?`<div class="fb bad" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-weight:400">Delete this ${it.type==='card'?'flashcard':'question'}?<div class="actions"><button class="btn" type="button" data-cm="delitemyes" data-id="${it.id}">Delete</button><button class="btn ghost" type="button" data-cm="delitemno">Cancel</button></div></div>`:''}`;
+  return `<div class="card"><h3 class="h3">Questions <span class="count">${qs.length}</span></h3>
     ${qs.length?Object.keys(groups).map(tp=>`<p class="cmtopic">${tp}</p><div>${groups[tp].map(it=>row(it,it.q||'(picture question)')).join('')}</div>`).join('')
       :'<p class="note">No questions yet. Questions show up in Practice and Tests.</p>'}</div>
   <div class="card"><h3 class="h3">Flashcards <span class="count">${cards.length}</span></h3>
-    ${cards.length?`<div>${cards.map(it=>row(it,it.term+' — '+(it.def||'(picture)'))).join('')}</div>`:'<p class="note">No flashcards yet. Flashcards show up in Terms, where Quiz me hides the back until you tap.</p>'}</div>`}
-function mgrItem(){const s=findSub(CM.sid),d=CM.draft,isNew=!s.items.some(i=>i.id===d.id),card=d.type==='card';
+    ${cards.length?`<div>${cards.map(it=>row(it,it.term+' — '+(it.def||'(picture)'))).join('')}</div>`:'<p class="note">No flashcards yet. Flashcards show up in Terms, where you can study them or take a flashcard test.</p>'}</div>`}
+function itemFormHTML(S){const s=findSub(S.sid),d=S.draft,card=d.kind==='card',v=x=>esc(x||'');
   const topics=[...new Set(s.items.filter(i=>i.type!=='card').map(i=>i.topic))];
-  return `<div class="phead"><button class="linkbtn" type="button" data-cm="backedit">← ${s.name}</button><button class="xbtn" type="button" data-cm="close" aria-label="Close">✕</button></div>
-  <h2 id="cmtitle">${isNew?'New':'Edit'} ${card?'flashcard':'question'}</h2>
-  <div class="seg" role="group" aria-label="Question type">${['text','mc','card'].map(t=>`<button type="button" data-cm="type" data-type="${t}" aria-pressed="${d.type===t}">${TYPE_LABEL[t]}</button>`).join('')}</div>
-  ${card?`<label class="field">Term (front)<input type="text" id="cmterm" maxlength="200" value="${esc(d.term||'')}" autocomplete="off"></label>
-    <label class="field">Definition (back)<textarea id="cmdef" maxlength="2000">${esc(d.def||'')}</textarea></label>`
-  :`<label class="field">Topic <span class="opt">(questions are grouped by topic in Practice and Progress)</span><input type="text" id="cmtopic" maxlength="40" list="cmtopics" value="${esc(d.topic||'')}" placeholder="General" autocomplete="off"><datalist id="cmtopics">${topics.map(t=>`<option value="${t}">`).join('')}</datalist></label>
-    <label class="field">Question<textarea id="cmq" maxlength="2000" placeholder="Type the question">${esc(d.q||'')}</textarea></label>`}
-  <div class="field">Picture <span class="opt">(optional)</span>
+  const pic=`<div class="field">Picture <span class="opt">(optional)</span>
     ${d.img?`<div class="imgprev"><img src="${d.img}" alt="Picture preview"><button class="linkbtn" type="button" data-cm="rmimg">Remove picture</button></div>`:`<div class="actions"><button class="btn ghost" type="button" data-cm="addimg">Add picture</button></div>`}
-    <input type="file" id="cmimg" accept="image/*" hidden></div>
-  ${d.type==='text'?`<label class="field">Answer<input type="text" id="cmans" maxlength="200" value="${esc(d.ans||'')}" autocomplete="off" autocapitalize="off"></label>
-    <label class="field">Other accepted answers <span class="opt">(optional, separate with ;)</span><input type="text" id="cmalt" maxlength="600" value="${esc((d.alt||[]).join('; '))}" autocomplete="off" autocapitalize="off"></label>
-    <p class="note" style="margin-top:-6px">Capitals and extra spaces don’t matter. Number answers are matched by value, so an answer of 0.5 also accepts 1/2.</p>`:''}
-  ${d.type==='mc'?`<div class="field">Choices <span class="opt">(tap the circle next to the correct one)</span>
-    ${d.choices.map((c,i)=>`<div class="mcrow"><input type="radio" name="cmcorrect" value="${i}" aria-label="Choice ${'ABCDEF'[i]} is correct"${d.correct===i?' checked':''}><input type="text" class="cmch" data-i="${i}" maxlength="300" value="${esc(c)}" placeholder="Choice ${'ABCDEF'[i]}" autocomplete="off">${d.choices.length>2?`<button class="xbtn" type="button" data-cm="rmchoice" data-i="${i}" aria-label="Remove choice ${'ABCDEF'[i]}">✕</button>`:''}</div>`).join('')}
-    ${d.choices.length<6?'<div><button class="linkbtn" type="button" data-cm="addchoice">+ Add choice</button></div>':''}</div>`:''}
-  ${card?'':`<label class="field">Explanation <span class="opt">(optional, shown as a hint and after answering)</span><textarea id="cmexp" maxlength="2000">${esc(d.explain||'')}</textarea></label>`}
-  ${cmMsg()}
-  <div class="actions"><button class="btn" type="button" data-cm="saveitem">Save</button><button class="btn ghost" type="button" data-cm="saveitem" data-more="1">Save and add another</button><button class="linkbtn" type="button" data-cm="backedit">Cancel</button></div>`}
-// Copy what's typed in the item editor into CM.draft (done before every re-render so nothing is lost).
-function syncDraft(){const d=CM.draft;if(!d||CM.screen!=='item')return;const v=id=>$(id)?$(id).value:undefined;
-  if(v('cmterm')!==undefined)d.term=v('cmterm');if(v('cmdef')!==undefined)d.def=v('cmdef');if(v('cmtopic')!==undefined)d.topic=v('cmtopic');
-  if(v('cmq')!==undefined)d.q=v('cmq');if(v('cmans')!==undefined)d.ans=v('cmans');if(v('cmalt')!==undefined)d.alt=v('cmalt').split(';').map(x=>x.trim()).filter(Boolean);
-  if(v('cmexp')!==undefined)d.explain=v('cmexp');
-  const ch=[...document.querySelectorAll('#cmbody .cmch')];if(ch.length)d.choices=ch.map(x=>x.value);
-  const r=document.querySelector('#cmbody input[name=cmcorrect]:checked');if(r)d.correct=+r.value}
-function blankDraft(type,topic){return{id:newId('i'),type,topic:topic||'',q:'',ans:'',alt:[],choices:['','','',''],correct:-1,explain:'',term:'',def:'',img:''}}
-function saveDraft(){const d=CM.draft,s=findSub(CM.sid);const it={...d};
-  if(it.type==='mc'){const keep=it.choices.map((c,i)=>[c.trim(),i]).filter(x=>x[0]);it.correct=keep.findIndex(x=>x[1]===d.correct);it.choices=keep.map(x=>x[0]);
-    if(!(it.q||'').trim()&&!it.img)return 'Type the question, or add a picture.';
-    if(it.choices.length<2)return 'Add at least two choices.';if(it.correct<0)return 'Tap the circle next to the correct choice.'}
-  else if(it.type==='text'){if(!(it.q||'').trim()&&!it.img)return 'Type the question, or add a picture.';if(!(it.ans||'').trim())return 'Type the answer.'}
-  else{if(!(it.term||'').trim())return 'Type the term for the front of the card.';if(!(it.def||'').trim()&&!it.img)return 'Type the definition for the back of the card.'}
+    <input type="file" data-f="img" accept="image/*" hidden></div>`;
+  return `<div class="seg" role="group" aria-label="What to add"><button type="button" data-cm="kind" data-kind="q" aria-pressed="${!card}">Question</button><button type="button" data-cm="kind" data-kind="card" aria-pressed="${card}">Flashcard</button></div>
+  ${card?`<label class="field">Term (front of the card)<input type="text" data-f="term" maxlength="200" value="${v(d.term)}" autocomplete="off"></label>
+    <label class="field">Definition (back of the card)<textarea data-f="def" maxlength="2000">${v(d.def)}</textarea></label>${pic}`
+  :`<label class="field">Topic <span class="opt">(groups questions in Practice and Progress)</span><input type="text" data-f="topic" maxlength="40" list="dl-${S.key}" value="${v(d.topic)}" placeholder="General" autocomplete="off"><datalist id="dl-${S.key}">${topics.map(t=>`<option value="${t}">`).join('')}</datalist></label>
+    <label class="field">Question<textarea data-f="q" maxlength="2000" placeholder="Type the question">${v(d.q)}</textarea></label>
+    ${pic}
+    <label class="field">Correct answer<input type="text" data-f="ans" maxlength="300" value="${v(d.ans)}" autocomplete="off" autocapitalize="off"></label>
+    <div class="field">Wrong answers <span class="opt">(optional)</span>
+      ${d.wrong.map((w,i)=>`<div class="mcrow"><input type="text" data-f="wrong" data-i="${i}" maxlength="300" value="${v(w)}" placeholder="Wrong answer ${i+1}" autocomplete="off"><button class="xbtn" type="button" data-cm="rmwrong" data-i="${i}" aria-label="Remove wrong answer ${i+1}">✕</button></div>`).join('')}
+      ${d.wrong.length<5?'<div><button class="linkbtn" type="button" data-cm="addwrong">+ Add a wrong answer</button></div>':''}
+      <p class="note" style="margin:0">${d.wrong.length?`<b>Multiple choice:</b> students pick from ${d.wrong.length+1} choices, shuffled each time.`:'<b>Open-ended:</b> students type the answer. Add wrong answers to make it multiple choice.'}</p></div>
+    ${d.wrong.length?'':`<details class="fold"${d.alt.length?' open':''}><summary>More options</summary><div class="foldbody">
+      <label class="field">Other correct answers <span class="opt">(other ways to write the answer, separated with ;)</span><input type="text" data-f="alt" maxlength="600" value="${v(d.alt.join('; '))}" autocomplete="off" autocapitalize="off"></label>
+      <p class="note" style="margin:0">Capitals and extra spaces never matter, and number answers match by value, so 0.5 also accepts 1/2.</p></div></details>`}
+    <label class="field">Explanation <span class="opt">(optional, shown as a hint and after answering)</span><textarea data-f="explain" maxlength="2000">${v(d.explain)}</textarea></label>`}
+  ${msgHTML(S)}`}
+// Copy what's typed into S.draft (done before every re-render so nothing is lost).
+function syncDraft(S,root){const d=S.draft;if(!d||!root)return;const f=n=>root.querySelector(`[data-f="${n}"]`);
+  for(const n of ['term','def','topic','q','ans','explain'])if(f(n))d[n]=f(n).value;
+  if(f('alt'))d.alt=f('alt').value.split(';').map(x=>x.trim()).filter(Boolean);
+  if(d.kind==='q')d.wrong=[...root.querySelectorAll('[data-f="wrong"]')].map(x=>x.value)}
+function saveDraft(S){const d=S.draft,s=findSub(S.sid),t=x=>(x||'').trim();let it;
+  if(d.kind==='card'){if(!t(d.term))return 'Type the term for the front of the card.';if(!t(d.def)&&!d.img)return 'Type the definition for the back of the card.';
+    it={id:d.id,type:'card',term:d.term,def:d.def,img:d.img}}
+  else{if(!t(d.q)&&!d.img)return 'Type the question, or add a picture.';const ans=t(d.ans);if(!ans)return 'Type the correct answer.';
+    let wrong=d.wrong.map(t).filter(Boolean);wrong=wrong.filter((w,i)=>wrong.findIndex(x=>normAns(x)===normAns(w))===i);
+    if(wrong.some(w=>normAns(w)===normAns(ans)))return 'One of the wrong answers is the same as the correct answer.';
+    const base={id:d.id,topic:d.topic,q:d.q,img:d.img,explain:d.explain};
+    it=wrong.length?{...base,type:'mc',choices:[ans,...wrong.slice(0,5)],correct:0}:{...base,type:'text',ans,alt:d.alt}}
   const c=cleanItem(it);if(!c)return 'Something’s missing. Check each box and try again.';
   if(!commitCustom(()=>{const i=s.items.findIndex(x=>x.id===c.id);if(i<0)s.items.push(c);else s.items[i]=c;s.updated=Date.now()}))return noSpace;
   return ''}
+// Actions both editors share. Returns true when the editor should re-render.
+function editorAction(S,a,b,root){const d=S.draft,s=findSub(S.sid),id=b.dataset.id;
+  switch(a){
+    case 'kind':d.kind=b.dataset.kind;S.msg='';return true;
+    case 'addwrong':if(d.wrong.length<5)d.wrong.push('');S.focusWrong=d.wrong.length-1;return true;
+    case 'rmwrong':d.wrong.splice(+b.dataset.i,1);return true;
+    case 'addimg':root.querySelector('[data-f="img"]').click();return false;
+    case 'rmimg':d.img='';return true;
+    case 'delitem':S.delItem=S.delItem===id?null:id;return true;
+    case 'delitemno':S.delItem=null;return true;
+    case 'delitemyes':if(commitCustom(()=>{s.items=s.items.filter(x=>x.id!==id);s.updated=Date.now()})){if(d&&d.id===id)S.draft=blankDraft(d.kind,d.topic);refreshSubjects();sayIn(S,'Deleted.','good')}else sayIn(S,noSpace,'bad');S.delItem=null;return true}
+  return null}
+function onPicture(S,root,input,rerender){const f=input.files&&input.files[0];if(!f)return;syncDraft(S,root);sayIn(S,'Adding picture…');rerender();
+  shrinkImage(f).then(img=>{S.draft.img=img;S.msg=''},()=>sayIn(S,'That picture couldn’t be used. Try a different photo or a screenshot.','bad')).then(rerender)}
+function focusNewWrong(S,root){if(S.focusWrong==null)return;const x=root.querySelector(`[data-f="wrong"][data-i="${S.focusWrong}"]`);S.focusWrong=null;if(x)x.focus()}
+
 function appBack(){  // phone back button: close the top-most panel. Returns true if something closed.
   if(!$('cmgr').hidden){if(CM.screen==='item'){CM.screen='edit';CM.draft=null;CM.msg=''}else if(CM.screen==='edit'){CM.screen='list';CM.msg=''}else{closeMgr();return true}renderMgr();return true}
   if(!$('fbsheet').hidden){closeFeedback();return true}
@@ -2515,8 +2550,7 @@ $('cmgr').addEventListener('submit',e=>{if(e.target.id!=='cmnewf')return;e.preve
 $('cmgr').addEventListener('change',e=>{
   if(e.target.id==='cmrename'){const s=findSub(CM.sid),name=cleanName(e.target.value,40);if(!s||!name||name===s.name){e.target.value=s?s.name:'';return}
     if(commitCustom(()=>{s.name=name;s.updated=Date.now()})){refreshSubjects();cmSay('Renamed.','good')}else cmSay(noSpace,'bad');renderMgr()}
-  if(e.target.id==='cmimg'){const f=e.target.files&&e.target.files[0];if(!f)return;syncDraft();cmSay('Adding picture…');renderMgr();
-    shrinkImage(f).then(img=>{CM.draft.img=img;CM.msg=''},()=>cmSay('That picture couldn’t be used. Try a different photo or a screenshot.','bad')).then(renderMgr)}
+  if(e.target.dataset.f==='img')onPicture(CM,$('cmbody'),e.target,renderMgr);
   if(e.target.id==='cmfile'){const f=e.target.files&&e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>importShared(r.result);r.onerror=()=>{cmSay('Couldn’t read that file.','bad');renderMgr()};r.readAsText(f)}});
 function importShared(txt){if(/^\s*SSG1:/i.test(txt)){cmSay('That’s a backup code, not a subject. Load it from Progress → Backup instead.','bad');return renderMgr()}
   const s=parseShared(txt);if(!s){cmSay('That isn’t a shared subject. Check that you copied the whole code or picked the right file.','bad');return renderMgr()}
@@ -2526,8 +2560,10 @@ function importShared(txt){if(/^\s*SSG1:/i.test(txt)){cmSay('That’s a backup c
   refreshSubjects();CM.importOpen=false;const n=s.items.length;
   cmSay(prev?`Updated your copy of “${s.name}”. Your progress on it is kept.`:`Added “${s.name}” (${n} question${n===1?'':'s'} and flashcard${n===1?'':'s'}). Pick it from the subject menu to practice.`,'good');
   renderMgr()}
-$('cmgr').addEventListener('click',e=>{const b=e.target.closest('[data-cm]');if(!b)return;const a=b.dataset.cm,id=b.dataset.id;syncDraft();
-  const s=findSub(CM.sid);
+$('cmgr').addEventListener('click',e=>{const b=e.target.closest('[data-cm]');if(!b)return;const a=b.dataset.cm,id=b.dataset.id,root=$('cmbody');
+  if(CM.screen==='item')syncDraft(CM,root);
+  const r=CM.draft||CM.screen==='edit'?editorAction(CM,a,b,root):null;
+  if(r===false)return;if(r){renderMgr();return focusNewWrong(CM,root)}
   switch(a){
     case 'close':return closeMgr();
     case 'new':Object.assign(CM,{creating:true,importOpen:false,msg:''});renderMgr();return $('cmname').focus();
@@ -2549,21 +2585,42 @@ $('cmgr').addEventListener('click',e=>{const b=e.target.closest('[data-cm]');if(
       [...T.sel].forEach(k=>{if(k.startsWith(id+'|'))T.sel.delete(k)});CM.delId=null;refreshSubjects();cmSay(`Deleted “${sub.name}”.`,'good');break}
     case 'back':Object.assign(CM,{screen:'list',msg:''});break;
     case 'backedit':Object.assign(CM,{screen:'edit',draft:null,msg:''});break;
-    case 'additem':Object.assign(CM,{screen:'item',draft:blankDraft(b.dataset.type),msg:''});break;
-    case 'edititem':{const it=s.items.find(x=>x.id===id);if(!it)break;CM.draft={...blankDraft(it.type),...JSON.parse(JSON.stringify(it))};Object.assign(CM,{screen:'item',msg:''});break}
-    case 'delitem':CM.delItem=CM.delItem===id?null:id;break;
-    case 'delitemno':CM.delItem=null;break;
-    case 'delitemyes':if(commitCustom(()=>{s.items=s.items.filter(x=>x.id!==id);s.updated=Date.now()})){refreshSubjects();cmSay('Deleted.','good')}else cmSay(noSpace,'bad');CM.delItem=null;break;
-    case 'type':{const d=CM.draft;d.type=b.dataset.type;if(d.type==='mc'&&d.choices.length<2)d.choices=['','','',''];CM.msg='';break}
-    case 'addchoice':if(CM.draft.choices.length<6)CM.draft.choices.push('');break;
-    case 'rmchoice':{const d=CM.draft,i=+b.dataset.i;d.choices.splice(i,1);if(d.correct===i)d.correct=-1;else if(d.correct>i)d.correct--;break}
-    case 'addimg':return $('cmimg').click();
-    case 'rmimg':CM.draft.img='';break;
-    case 'saveitem':{const err=saveDraft();if(err){cmSay(err,'bad');break}const d=CM.draft;refreshSubjects();
-      if(b.dataset.more){CM.draft=blankDraft(d.type,d.topic);cmSay('Saved. Add the next one.','good')}
+    case 'additem':Object.assign(CM,{screen:'item',draft:blankDraft(b.dataset.kind),msg:''});break;
+    case 'edititem':{const it=findSub(CM.sid).items.find(x=>x.id===id);if(!it)break;Object.assign(CM,{screen:'item',draft:draftFromItem(it),msg:''});break}
+    case 'saveitem':{const err=saveDraft(CM);if(err){cmSay(err,'bad');renderMgr();return root.querySelector('.fb.bad').scrollIntoView({block:'center'})}
+      const d=CM.draft;refreshSubjects();
+      if(b.dataset.more){CM.draft=blankDraft(d.kind,d.topic);cmSay('Saved. Add the next one.','good')}
       else{Object.assign(CM,{screen:'edit',draft:null});cmSay('Saved.','good')}break}
     default:return}
   renderMgr()});
+
+/* ---------- Add tab (takes the place of Formulas on a custom subject) ---------- */
+const AD={key:'ad',sid:null,draft:null,msg:'',cls:'neutral',delItem:null};
+function syncAddTab(){const add=isCustom(subj),b=document.querySelector('.tabbar [data-view="formulas"]');
+  $('v-formulas').textContent=add?'Add':'Formulas';b.querySelector('.lbl').textContent=add?'Add':'Formulas';
+  b.querySelector('svg').innerHTML=add?'<path d="M12 5v14M5 12h14"/>':'<path d="M18 5H6l6 7-6 7h12"/>'}
+function renderAddTab(){const el=$('formulas'),s=findSub(subj);
+  if(AD.sid!==subj||!AD.draft)Object.assign(AD,{sid:subj,draft:blankDraft('q'),msg:'',delItem:null});
+  const editing=s.items.some(i=>i.id===AD.draft.id),card=AD.draft.kind==='card';
+  el.innerHTML=`<div class="row"><h2 class="h2">${editing?`Edit ${card?'flashcard':'question'}`:`Add to ${s.name}`}</h2>${editing?'<button class="linkbtn" type="button" data-cm="adcancel">Cancel editing</button>':''}</div>
+    <div class="card" id="adform">${itemFormHTML(AD)}
+      <div class="actions"><button class="btn" type="button" data-cm="adsave">${editing?'Save changes':card?'Add flashcard':'Add question'}</button></div></div>
+    ${itemListHTML(AD)}
+    <p class="note">Rename, share or delete this subject from <b>My subjects</b> in the name menu.</p>`}
+$('formulas').addEventListener('click',e=>{const b=e.target.closest('[data-cm]');if(!b||!isCustom(subj))return;const a=b.dataset.cm,root=$('formulas');
+  syncDraft(AD,root);const r=editorAction(AD,a,b,root);if(r===false)return;
+  if(r){renderAddTab();return focusNewWrong(AD,root)}
+  if(a==='edititem'){const it=findSub(subj).items.find(x=>x.id===b.dataset.id);if(!it)return;Object.assign(AD,{draft:draftFromItem(it),msg:''});renderAddTab();return $('adform').scrollIntoView({block:'start'})}
+  if(a==='adcancel'){Object.assign(AD,{draft:blankDraft(AD.draft.kind,AD.draft.topic),msg:''});return renderAddTab()}
+  if(a==='adsave'){const d=AD.draft,wasEdit=findSub(subj).items.some(i=>i.id===d.id),err=saveDraft(AD);
+    if(err){sayIn(AD,err,'bad');renderAddTab();return root.querySelector('.fb.bad').scrollIntoView({block:'center'})}
+    const mc=d.kind==='q'&&d.wrong.some(w=>w.trim());
+    AD.draft=blankDraft(d.kind,d.topic);
+    sayIn(AD,wasEdit?'Changes saved.':d.kind==='card'?'Flashcard added. It’s in Terms now. Add another below.':`${mc?'Multiple-choice':'Open-ended'} question added. It’s in Practice now. Add another below.`,'good');
+    refreshSubjects();  // redraws this tab too
+    const first=root.querySelector(d.kind==='card'?'[data-f="term"]':'[data-f="q"]');if(first)first.focus({preventScroll:true});
+    $('adform').scrollIntoView({block:'start'})}});
+$('formulas').addEventListener('change',e=>{if(e.target.dataset.f==='img'&&isCustom(subj))onPicture(AD,$('formulas'),e.target,renderAddTab)});
 
 /* ---------- feedback (student menu → Send feedback) ---------- */
 // Messages are emailed to the site owner by Web3Forms (web3forms.com). The access key is meant to be public:

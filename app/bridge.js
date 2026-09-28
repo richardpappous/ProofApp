@@ -36,6 +36,10 @@ export const BRIDGE = `(function(){
     // Tell the app whenever the section changes, so the bottom bar stays in sync.
     var sv = setView;
     setView = function (v) { sv(v); post({ type: 'view', view: view }); };
+    // On subjects people make, the Formulas tab becomes "Add".
+    var isAdd = function () { return typeof isCustom === 'function' && isCustom(subj); };
+    var ss = setSubj;
+    setSubj = function (id) { ss(id); post({ type: 'subject', add: isAdd() }); };
 
     // Backups: WebViews can't download files or use the web clipboard,
     // so hand the data to the phone instead.
@@ -81,7 +85,7 @@ export const BRIDGE = `(function(){
       new MutationObserver(sendOpen).observe(el, { attributes: true, attributeFilter: ['hidden'] });
     });
 
-    post({ type: 'ready', view: view });
+    post({ type: 'ready', view: view, add: isAdd() });
   } catch (e) {
     post({ type: 'error', message: String(e && e.message || e) });
   }

@@ -39,7 +39,11 @@ function Main({ dark }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [keyboard, setKeyboard] = useState(false);
   const [snack, setSnack] = useState('');
+  const [addTab, setAddTab] = useState(false);  // custom subjects show "Add" where "Formulas" usually is
   const view = TABS[index].key;
+  const routes = addTab
+    ? TABS.map((t) => (t.key === 'formulas' ? { ...t, title: 'Add', focusedIcon: 'plus-box', unfocusedIcon: 'plus-box-outline' } : t))
+    : TABS;
 
   // Keep the page's light/dark mode in step with the phone.
   useEffect(() => { web.current?.injectJavaScript(themeScript(dark)); }, [dark]);
@@ -75,8 +79,12 @@ function Main({ dark }) {
       case 'view': {
         const i = TABS.findIndex((t) => t.key === msg.view);
         if (i >= 0) setIndex(i);
+        if (msg.type === 'ready') setAddTab(!!msg.add);
         break;
       }
+      case 'subject':
+        setAddTab(!!msg.add);
+        break;
       case 'menu':
         setMenuOpen(!!msg.open);
         break;
@@ -144,7 +152,7 @@ function Main({ dark }) {
 
       {!keyboard && (
         <BottomNavigation.Bar
-          navigationState={{ index, routes: TABS }}
+          navigationState={{ index, routes }}
           onTabPress={onTabPress}
           style={{ backgroundColor: theme.colors.surface, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.colors.outline }}
           activeColor={theme.colors.primary}
