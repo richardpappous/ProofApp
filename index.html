@@ -169,10 +169,13 @@ select{font:600 15px var(--body);padding:9px 12px;border:1px solid var(--line);b
 .term .def{margin:0;font-size:15px}
 .term .ex{margin:0;font-family:var(--mono);font-size:13.5px;color:var(--muted)}
 /* flip cards (Quiz me, Study flashcards). Both faces sit in one grid cell, so the card is as tall as its longer side. */
-.flip{perspective:1200px;cursor:pointer;background:none;border:0;padding:0;border-radius:12px;-webkit-tap-highlight-color:transparent}
-.flip .inner{display:grid;height:100%;transition:transform .55s cubic-bezier(.3,.7,.25,1);transform-style:preserve-3d;-webkit-transform-style:preserve-3d}
+.flip{width:100%;min-width:0;perspective:1200px;cursor:pointer;background:none;border:0;padding:0;border-radius:12px;-webkit-tap-highlight-color:transparent}
+/* minmax(0,1fr) + min-width:0 keep a big picture from stretching the card wider than the screen */
+.flip .inner{display:grid;grid-template-columns:minmax(0,1fr);height:100%;transition:transform .55s cubic-bezier(.3,.7,.25,1);transform-style:preserve-3d;-webkit-transform-style:preserve-3d}
 .flip.flipped .inner{transform:rotateY(180deg)}
 .flip .face{grid-area:1/1;display:flex;flex-direction:column;justify-content:center;gap:8px;min-height:140px;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--surface);backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.flip .face{min-width:0;overflow-wrap:anywhere}
+.flip img{display:block;max-width:100%;max-height:40vh;width:auto;height:auto;object-fit:contain;border-radius:8px;margin:8px auto 0}
 .flip .front{transform:rotateY(0deg)}
 .flip .back{transform:rotateY(180deg);border-color:var(--accent)}
 .flip h3{margin:0;font-family:var(--display);font-weight:600;font-size:19px;line-height:1.2}
