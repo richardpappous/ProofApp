@@ -25,7 +25,9 @@ export const BRIDGE = `(function(){
 
   // The native top bar and bottom bar replace the page's title and section tabs.
   var st = document.createElement('style');
-  st.textContent = 'body>.wrap>header,.views{display:none!important}' +
+  // (.tabbar is the site's own phone tab bar; the app has a native one instead.)
+  st.textContent = 'body>.wrap>header,.views,.tabbar{display:none!important}' +
+    'body{padding-bottom:48px!important}' +
     '.nav{margin-top:4px}' +
     'html{-webkit-tap-highlight-color:transparent}';
   document.head.appendChild(st);
