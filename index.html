@@ -72,6 +72,32 @@ header h1{font-family:var(--display);font-weight:800;font-size:clamp(28px,6vw,40
   #toast{bottom:calc(86px + env(safe-area-inset-bottom,0px))}
 }
 @media (max-width:640px) and (hover:none){body:has(:is(input,textarea):focus) .tabbar{display:none}}
+/* custom subjects: multiple choice, pictures, the My subjects panel */
+form.answer.mc{flex-direction:column;align-items:stretch}
+.choices{display:flex;flex-direction:column;gap:8px}
+.choice{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:11px 14px;font:16px/1.4 var(--body);cursor:pointer}
+.choice .cl{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-weight:700;font-size:14px}
+.choice[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.choice.right{border-color:var(--good);background:var(--good-soft)}.choice.right .cl{background:var(--good);color:var(--surface)}
+.choice.wrong{border-color:var(--bad);background:var(--bad-soft)}.choice.wrong .cl{background:var(--bad);color:var(--surface)}
+.choice:disabled{cursor:default}
+.figbox img{display:block;max-width:100%;max-height:360px;height:auto;border-radius:8px}
+.term img{display:block;max-width:100%;max-height:240px;height:auto;border-radius:8px;margin-top:8px}
+.panel{position:fixed;inset:0;z-index:46;overflow-y:auto;background:var(--paper);padding:max(12px,env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom,0px))}
+.pwrap{max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.phead{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px}
+.pwrap h2{font-family:var(--display);font-weight:800;font-size:26px;line-height:1.1;margin:0}
+.cmtopic{font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin:12px 0 0}
+.cmrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.cmrow:last-child{border-bottom:0}
+.cmprev{min-width:0;display:flex;align-items:center;gap:8px}.cmprev .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.cmrow .actions{flex:none;flex-wrap:nowrap}
+.mcrow{display:flex;align-items:center;gap:8px}
+.mcrow input[type=radio]{flex:none;width:22px;height:22px;accent-color:var(--good)}
+.mcrow input[type=text]{flex:1;min-width:0;max-width:none}
+.field input[type=text]{width:100%}
+.imgprev{display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+.imgprev img{max-width:100%;max-height:220px;border-radius:10px;border:1px solid var(--line)}
 /* "A new version is available" bar */
 .updbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:41;display:flex;align-items:center;gap:10px;width:max-content;max-width:calc(100vw - 24px);background:var(--ink);color:var(--paper);padding:8px 6px 8px 16px;border-radius:14px;box-shadow:0 10px 30px rgba(10,20,40,.25);font-weight:700;font-size:14px}
 .updbar .updgo{flex:none;border:0;border-radius:10px;padding:8px 14px;background:var(--accent);color:var(--accent-ink);font:700 14px var(--body);cursor:pointer}
@@ -359,6 +385,7 @@ details.fold[open]{padding-bottom:20px}
     <div class="actions"><button class="btn" id="fbsend" type="submit">Submit feedback</button><button class="btn ghost" id="fbcancel" type="button">Cancel</button></div>
   </form>
 </div>
+<div class="panel" id="cmgr" role="dialog" aria-modal="true" aria-labelledby="cmtitle" hidden><div class="pwrap" id="cmbody"></div></div>
 <div class="welcome" id="welcome" role="dialog" aria-modal="true" aria-labelledby="wtitle" hidden>
   <div class="wcard">
     <div class="eyebrow">Welcome</div>
@@ -1655,6 +1682,9 @@ const parseAns=raw=>readNumber(String(raw));
 /* returns: empty | bad | ok | wrong | notfactored */
 function grade(p,raw){
   if(!raw||!raw.trim())return'empty';
+  if(p.kind==='mc')return +raw===p.correct?'ok':'wrong';
+  if(p.kind==='text'){const u=normAns(raw);if(p.ansList.some(a=>normAns(a)===u))return'ok';
+    const v=readNumber(raw);return !isNaN(v)&&p.ansList.some(a=>{const w=readNumber(a);return !isNaN(w)&&Math.abs(v-w)<=1e-6*Math.max(1,Math.abs(w))})?'ok':'wrong'}
   if(p.kind==='time'){const m=normalize(raw).replace(/(a\.?m\.?|p\.?m\.?)$/,'').match(/^(\d{1,2}):(\d{2})$/);if(!m||+m[2]>59||+m[1]>12||+m[1]<1)return'badtime';return((+m[1]%12)*60+ +m[2])%720===p.ansT%720?'ok':'wrong'}
   if(p.kind==='rem'){const m=normalize(raw).match(/^(\d+)r(\d+)$/);if(!m)return'badrem';return +m[1]===p.ansR[0]&&+m[2]===p.ansR[1]?'ok':'wrong'}
   if(p.kind==='cx'){const v=tryEval(normalize(raw));if(!v)return'bad';return Math.abs(v.re-p.ansC[0])<1e-6&&Math.abs(v.im-p.ansC[1])<1e-6?'ok':'wrong'}
@@ -1663,6 +1693,10 @@ function grade(p,raw){
     return /\)\(|\)\^2|\)\*\(/.test(s)?'ok':'notfactored'}
   const v=readNumber(raw);if(isNaN(v))return'bad';return Math.abs(v-p.ans)<=(p.tol||1e-6)?'ok':'wrong'}
 const answerText=p=>p.show!==undefined?p.show:N(p.ans);
+// Custom-subject answers: capitals, curly quotes, extra spaces and a final period don't matter.
+const normAns=s=>String(s).normalize('NFKC').toLowerCase().replace(/[‘’]/g,"'").replace(/[“”]/g,'"').replace(/\s+/g,' ').trim().replace(/[.!?]+$/,'').trim();
+// What the student answered, as text (multiple choice stores the choice number).
+const rawText=(p,raw)=>p.kind==='mc'?(p.choices[+raw]!==undefined?esc(p.choices[+raw]):''):esc(raw);
 const placeholder=p=>p.kind==='poly'?'(x + 2)(x − 5)':p.kind==='cx'?'like 3 − 4i':p.kind==='time'?'like 3:45':p.kind==='rem'?'like 17 R 2':'Your answer';
 const BADMSG={bad:'I couldn’t read that. Enter a number, a fraction like 3/4, a root like sqrt2/2, or a π expression like 3pi/4.',
   badtime:'Type the time like 3:45.',badrem:'Type the quotient, then R, then the remainder, like 17 R 2.',notfactored:'That is equal to the original, but it isn’t factored yet. Write it as a product like (x + 2)(x − 5).',empty:'Type an answer first.'};
@@ -1721,18 +1755,90 @@ function level(k){const t=Store.data.topics[k];if(!t||!t.t)return{cls:'n',label:
   if(!mn){const r=t.r&&t.r.length?t.r:[1];return{cls:'n',label:'Easy only',pct:avgPct(r),t:t.t,mn:0,easyOnly:true}}
   const pct=avgPct(t.m),[cls,label]=pct>=85&&mn>=5?['m','Mastered']:pct>=60?['g','Getting there']:['w','Needs work'];
   return{cls,label,pct,t:t.t,mn}}
-const subjName=id=>SUBJ.find(s=>s.id===id).name;
+const subjName=id=>(SUBJ.find(s=>s.id===id)||{name:'Removed subject'}).name;
 const splitKey=k=>{const i=k.indexOf('|');return[k.slice(0,i),k.slice(i+1)]};
+
+/* ================= custom subjects ================= */
+// Subjects people make themselves (My subjects). Saved per device under ssg-custom, shared by every student
+// on it, included in backups, and shareable with an SSGS1: code or a .json file. Each one is registered into
+// SUBJ/GEN/TERMS/... like a built-in subject, so practice, tests, reviews and progress all work unchanged.
+// Custom ids start with "c_". Topic and subject names are stripped of < > " so they're safe in HTML;
+// question and answer text is escaped with esc() whenever it's shown.
+const CUSK='ssg-custom',CUS_LIMIT=3e6;  // characters; leaves most of the ~5 MB browser storage for progress
+let CUS={v:1,subjects:[]};
+const isCustom=id=>typeof id==='string'&&id.startsWith('c_');
+const newId=p=>p+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const cleanName=(s,max)=>String(s||'').replace(/[<>"]/g,'').replace(/&/g,'and').replace(/\s+/g,' ').trim().slice(0,max);
+const cleanText=(s,max)=>String(s==null?'':s).replace(/\r/g,'').slice(0,max).trim();
+const okImg=s=>typeof s==='string'&&s.length<400000&&/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(s)?s:'';
+const fmtText=s=>esc(s).replace(/\n/g,'<br>');
+function cleanTopic(t){const n=cleanName(t,40);return !n||n==='All'||n.startsWith('__')?'General':n}
+function cleanItem(it){if(!it||typeof it!=='object'||!['text','mc','card'].includes(it.type))return null;
+  const o={id:/^i[a-z0-9]{4,24}$/.test(it.id)?it.id:newId('i'),type:it.type,img:okImg(it.img)};
+  if(o.type==='card'){o.term=cleanText(it.term,200);o.def=cleanText(it.def,2000);return o.term&&(o.def||o.img)?o:null}
+  o.topic=cleanTopic(it.topic);o.q=cleanText(it.q,2000);o.explain=cleanText(it.explain,2000);if(!o.q&&!o.img)return null;
+  if(o.type==='text'){o.ans=cleanText(it.ans,200);o.alt=(Array.isArray(it.alt)?it.alt:[]).map(a=>cleanText(a,200)).filter(Boolean).slice(0,10);return o.ans?o:null}
+  o.choices=(Array.isArray(it.choices)?it.choices:[]).slice(0,6).map(c=>cleanText(c,300));o.correct=Math.floor(+it.correct);
+  return o.choices.length>=2&&o.choices.every(Boolean)&&o.correct>=0&&o.correct<o.choices.length?o:null}
+function cleanSubject(s){if(!s||typeof s!=='object')return null;
+  const items=(Array.isArray(s.items)?s.items:[]).slice(0,1000).map(cleanItem).filter(Boolean),seen=new Set();
+  items.forEach(it=>{while(seen.has(it.id))it.id=newId('i');seen.add(it.id)});
+  return{id:/^c_[a-z0-9]{4,24}$/.test(s.id)?s.id:newId('c_'),name:cleanName(s.name,40)||'My subject',items,updated:+s.updated||Date.now()}}
+function loadCustom(){try{const j=JSON.parse(localStorage.getItem(CUSK)||'null');if(j&&Array.isArray(j.subjects)){const ids=new Set();
+    CUS={v:1,subjects:j.subjects.map(cleanSubject).filter(s=>s&&!ids.has(s.id)&&ids.add(s.id))}}}catch(e){}}
+function saveCustom(){const txt=JSON.stringify(CUS);if(txt.length>CUS_LIMIT)return false;try{localStorage.setItem(CUSK,txt);return true}catch(e){return false}}
+// Apply a change; if it doesn't fit in storage, undo it and return false.
+function commitCustom(change){const before=JSON.stringify(CUS);change();if(saveCustom()){registerCustom();return true}CUS=JSON.parse(before);return false}
+const findSub=id=>CUS.subjects.find(s=>s.id===id);
+function customProblem(s,it){const expl=it.explain?[fmtText(it.explain)]:[],base={story:fmtText(it.q),ask:'',tip:'',imgRef:it.img?[s.id,it.id]:null};
+  if(it.type==='mc'){const order=shuffle(it.choices.map((c,i)=>i)),choices=order.map(i=>it.choices[i]),correct=order.indexOf(it.correct),show=esc(choices[correct]);
+    return{...base,kind:'mc',choices,correct,ans:0,show,steps:[...expl,`Answer: ${show}`]}}
+  const ansList=[it.ans,...it.alt],show=esc(it.ans);
+  return{...base,kind:'text',ansList,numeric:ansList.every(a=>!isNaN(readNumber(a))),ans:0,show,steps:[...expl,`Answer: ${show}`]}}
+function imgHTML(ref){const s=findSub(ref[0]),it=s&&s.items.find(x=>x.id===ref[1]);return it&&it.img?`<div class="figbox"><img src="${it.img}" alt="Picture for this question"></div>`:''}
+function registerCustom(){
+  for(let i=SUBJ.length-1;i>=0;i--)if(SUBJ[i].custom){const id=SUBJ[i].id;[GEN,EASY,HARD,TERMS,FORM,NOTES].forEach(o=>delete o[id]);SUBJ.splice(i,1)}
+  for(const s of CUS.subjects){SUBJ.push({id:s.id,name:s.name,custom:true});GEN[s.id]={};EASY[s.id]={};HARD[s.id]={};FORM[s.id]=[];
+    NOTES[s.id]='Capital letters and extra spaces don’t matter.';
+    const byTopic={};s.items.forEach(it=>{if(it.type!=='card')(byTopic[it.topic]=byTopic[it.topic]||[]).push(it)});
+    for(const tp in byTopic){const items=byTopic[tp];let last=null;
+      GEN[s.id][tp]=()=>{let it;do{it=pick(items)}while(items.length>1&&it===last);last=it;return customProblem(s,it)}}
+    TERMS[s.id]=s.items.filter(it=>it.type==='card').map(c=>[esc(c.term),fmtText(c.def)+(c.img?`<img src="${c.img}" alt="">`:''),''])}
+  buildSubjSelect()}
+function buildSubjSelect(){const o=s=>`<option value="${s.id}">${s.name}</option>`,mine=SUBJ.filter(s=>s.custom);
+  subjEl.innerHTML=SUBJ.filter(s=>!s.custom).map(o).join('')+(mine.length?`<optgroup label="My subjects">${mine.map(o).join('')}</optgroup>`:'')+'<option value="__manage">＋ Create or add a subject…</option>';
+  subjEl.value=SUBJ.some(s=>s.id===subj)?subj:SUBJ[0].id}
+// After subjects change: keep the current subject if it still exists, otherwise go back to the first one.
+function refreshSubjects(){if(!SUBJ.some(s=>s.id===subj))setSubj(SUBJ[0].id);else if(isCustom(subj))setSubj(subj)}
+// Merge subjects from a backup or share: same id = the newer copy wins (keeps progress); new ids are added.
+function mergeCustom(list){const added=[];for(const raw of list){const s=cleanSubject(raw);if(!s)continue;const i=CUS.subjects.findIndex(x=>x.id===s.id);
+    if(i<0){CUS.subjects.push(s);added.push(s)}else if(s.updated>=CUS.subjects[i].updated)CUS.subjects[i]=s}return added}
+// Copy text / save a file. The phone app's bridge replaces these two with native versions.
+function copyText(text,ok,fail){try{navigator.clipboard.writeText(text).then(ok,fail)}catch(e){fail()}}
+function downloadFile(name,text){try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'application/json'}));a.download=name;document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);return true}catch(e){return false}}
+const shareCode=s=>'SSGS1:'+b64e(JSON.stringify({app:'subject-study-guide',type:'subject',v:1,subject:s}));
+function parseShared(txt){txt=String(txt||'').trim();let o;
+  try{o=txt.startsWith('{')?JSON.parse(txt):JSON.parse(b64d(txt.replace(/^SSGS1:/i,'').replace(/\s+/g,'')))}catch(e){return null}
+  return o&&o.app==='subject-study-guide'&&o.type==='subject'?cleanSubject(o.subject):null}
+// Photos are shrunk to at most 900 px and saved as JPEG, usually 40–120 KB each.
+function shrinkImage(file){return new Promise((res,rej)=>{if(!file||!/^image\//.test(file.type||'image/'))return rej(new Error('type'));
+  const url=URL.createObjectURL(file),im=new Image();
+  im.onload=()=>{URL.revokeObjectURL(url);let w=im.naturalWidth,h=im.naturalHeight;const k=Math.min(1,900/Math.max(w,h));w=Math.round(w*k);h=Math.round(h*k);
+    const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,w,h);x.drawImage(im,0,0,w,h);
+    let q=.78,d=c.toDataURL('image/jpeg',q);while(d.length>200000&&q>.4){q-=.1;d=c.toDataURL('image/jpeg',q)}
+    okImg(d)?res(d):rej(new Error('big'))};
+  im.onerror=()=>{URL.revokeObjectURL(url);rej(new Error('read'))};im.src=url})}
 
 /* ================= state + UI ================= */
 let subj='ms',view='practice',topic='All',cur=null,right=0,tried=0,answered=false,tq='';
 const $=id=>document.getElementById(id);
 const subjEl=$('subject');
-subjEl.innerHTML=SUBJ.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
-subjEl.addEventListener('change',e=>setSubj(e.target.value));
+loadCustom();registerCustom();
+subjEl.addEventListener('change',e=>{const v=e.target.value;if(v==='__manage'){subjEl.value=subj;openMgr();return}setSubj(v)});
 function setSubj(id){
   subj=id;topic='__smart';tq='';$('tsearch').value='';
-  subjEl.value=id;
+  subjEl.value=id;$('level').hidden=isCustom(id);  // custom questions have no Easy/Hard versions
   const sel=$('topic');sel.innerHTML='<option value="__smart">Smart mix</option><option value="All">All topics</option>'+Object.keys(GEN[id]).map(k=>`<option>${k}</option>`).join('');
   $('pnote').textContent=NOTES[id];
   newProblem();renderTerms();renderFormulas();
@@ -1741,12 +1847,12 @@ function setSubj(id){
 }
 function saveUI(){try{localStorage.setItem('ssg-ui',JSON.stringify({subj,view,topic}))}catch(e){}}
 $('topic').addEventListener('change',e=>{topic=e.target.value;cur=null;newProblem();saveUI()});
-function makeProblem(sj,name,lvl=LEVEL){const prev=LEVEL;LEVEL=lvl;let p;
+function makeProblem(sj,name,lvl=LEVEL){if(isCustom(sj))lvl=2;const prev=LEVEL;LEVEL=lvl;let p;
   try{const f=(lvl===1&&EASY[sj][name])||(lvl===3&&HARD[sj][name])||GEN[sj][name];p={name,subj:sj,level:lvl,...f()}}finally{LEVEL=prev}
   p.steps=p.steps.filter(Boolean);for(const k of ['story','q','ask'])if(typeof p[k]==='string')p[k]=fixArticles(p[k]);return p}
 function fixArticles(t){return t.replace(/\b([Aa]) (\$?)(\d[\d,]*)/g,(m,a,d,n)=>{const w=n.replace(/,/g,''),L=w.length;const an=w[0]==='8'||(L%3===2&&/^1[18]/.test(w));return an?`${a}n ${d}${n}`:m})}
 const KEYS=[['√','√'],['π','π'],['²','²'],['^','^'],['/','/'],['−','-'],['(','('],[')',')']];
-function keysHTML(p,id){const k=[...KEYS];if(p.kind==='poly')k.unshift(['x','x']);if(p.kind==='cx')k.unshift(['i','i']);if(p.kind==='time')k.unshift([':',':']);if(p.kind==='rem')k.unshift(['R',' R ']);
+function keysHTML(p,id){if(p.kind==='mc'||(p.kind==='text'&&!p.numeric))return '';const k=[...KEYS];if(p.kind==='poly')k.unshift(['x','x']);if(p.kind==='cx')k.unshift(['i','i']);if(p.kind==='time')k.unshift([':',':']);if(p.kind==='rem')k.unshift(['R',' R ']);
   return `<div class="keys" role="group" aria-label="Math symbols">${k.map(([l,v])=>`<button type="button" tabindex="-1" data-for="${id}" data-ins="${v}" aria-label="Insert ${l}">${l}</button>`).join('')}</div>`}
 document.addEventListener('pointerdown',e=>{if(e.target.closest&&e.target.closest('.keys button'))e.preventDefault()});
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('.keys button');if(!b)return;const inp=$(b.dataset.for);if(!inp)return;
@@ -1759,27 +1865,38 @@ function newProblem(){
   const mixed=topic==='All'||topic==='__smart',due=reviewsDue(subj).filter(x=>mixed||x.k===subj+'|'+topic),rv=due.find(x=>!cur||cur.review!==x.id);
   if(rv){cur=makeProblem(subj,splitKey(rv.k)[1],rv.lvl);cur.review=rv.id;answered=false;render();refreshInfo();return}
   const all=Object.keys(GEN[subj]);let name;
+  if(!all.length){cur=null;answered=false;$('pcard').classList.remove('solved');  // a custom subject with no questions yet
+    $('pcard').innerHTML=`<div class="eyebrow">${subjName(subj)}</div><p class="sub" style="margin:0">This subject doesn’t have any practice questions yet.${TERMS[subj].length?' Its flashcards are in Terms.':''}</p>
+      <div class="actions"><button class="btn" id="cmaddq" type="button">Add questions</button></div>`;
+    $('cmaddq').onclick=()=>openMgr('edit',subj);refreshInfo();return}
   if(topic==='__smart')name=smartPick(all);
   else{const pool=all.filter(k=>topic==='All'||k===topic);do{name=pick(pool)}while(pool.length>1&&cur&&name===cur.name)}
   cur=makeProblem(subj,name);if(topic==='__smart')cur.smart=true;answered=false;render();refreshInfo()}
 function problemHTML(c){return `${c.story?`<p class="story">${c.story}</p>`:`<div class="q"><span class="ask">${c.ask}</span>${c.q}</div>`}
-   ${c.fig?`<div class="figbox">${c.fig}</div>`:''}
-   ${c.story?`<p class="askline">${c.ask}</p>`:''}`}
+   ${c.fig?`<div class="figbox">${c.fig}</div>`:''}${c.imgRef?imgHTML(c.imgRef):''}
+   ${c.story&&c.ask?`<p class="askline">${c.ask}</p>`:''}`}
+// Multiple-choice buttons (the chosen number goes into the hidden answer input).
+function choicesHTML(c,sel){return `<div class="choices" role="group" aria-label="Answer choices">${c.choices.map((t,i)=>`<button type="button" class="choice" data-ci="${i}" aria-pressed="${sel===i}"><span class="cl">${'ABCDEF'[i]}</span><span>${esc(t)}</span></button>`).join('')}</div>`}
 function stepsHTML(c,withAnswer){return `<div style="display:flex;flex-direction:column;gap:12px">
    ${withAnswer?`<div class="fb neutral">Answer: <span style="font-family:var(--mono)">${answerText(c)}</span></div>`:''}
    <ol class="steps">${c.steps.map(s=>`<li>${s}</li>`).join('')}</ol>
-   <div class="tip teach"><b>How to explain it</b>${c.tip}</div></div>`}
+   ${c.tip?`<div class="tip teach"><b>How to explain it</b>${c.tip}</div>`:''}</div>`}
 function render(){
   const c=cur;
   hintN=0;$('pcard').classList.remove('solved');
-  $('pcard').innerHTML=`<div class="eyebrow">${c.review?'<span class="tag">Review</span>':c.smart?'<span class="tag soft">Smart mix</span>':''}${subjName(subj)} · ${c.name} · ${LEVELS[c.level-1]}</div>${problemHTML(c)}
-   <form class="answer" id="af"><input id="ain" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${placeholder(c)}" aria-label="Your answer"><button class="btn" id="bcheck" type="submit">Check</button></form>
+  const mc=c.kind==='mc';
+  $('pcard').innerHTML=`<div class="eyebrow">${c.review?'<span class="tag">Review</span>':c.smart?'<span class="tag soft">Smart mix</span>':''}${subjName(subj)} · ${c.name}${isCustom(c.subj)?'':' · '+LEVELS[c.level-1]}</div>${problemHTML(c)}
+   <form class="answer${mc?' mc':''}" id="af">${mc?`<input type="hidden" id="ain" value="">${choicesHTML(c,-1)}`:`<input id="ain" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${placeholder(c)}" aria-label="Your answer">`}<button class="btn" id="bcheck" type="submit"${mc?' hidden':''}>Check</button></form>
    ${keysHTML(c,'ain')}
    <div id="fb"></div>
    <div id="hints"></div>
    <div class="actions"><button class="btn ghost" id="bhint" type="button">Hint</button><button class="btn ghost" id="bsteps" type="button">Show answer and steps</button><button class="btn ghost" id="bnext" type="button">New problem</button></div>
    <div id="more"></div>`;
-  const H=c.steps.length>1?c.steps.slice(0,-1):[c.tip];
+  const H=c.steps.length>1?c.steps.slice(0,-1):c.tip?[c.tip]:[];
+  if(!H.length)$('bhint').hidden=true;
+  // Multiple choice: tapping a choice checks it right away.
+  $('pcard').querySelectorAll('.choice').forEach(b=>b.onclick=()=>{if(solved||b.disabled)return;$('ain').value=b.dataset.ci;
+    $('pcard').querySelectorAll('.choice').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));check()});
   $('bhint').onclick=()=>{if(hintN>=H.length)return;hintN++;
     $('hints').innerHTML=`<div class="tip"><b>Hint ${hintN} of ${H.length}</b><ol class="steps">${H.slice(0,hintN).map(h=>`<li>${h}</li>`).join('')}</ol></div>`;
     const b=$('bhint');if(hintN>=H.length){b.textContent='No more hints';b.disabled=true}else b.textContent='Next hint'};
@@ -1794,8 +1911,10 @@ function check(){
   const ok=g==='ok';
   if(!answered){answered=true;const res=record(subj,cur.name,ok,cur.level);if(cur.review)reviewResult(cur.review,ok);else if(!ok)addReview(subj+'|'+cur.name,cur.level);Store.changed();announce(res);refreshInfo()}
   fb.innerHTML=ok?`<div class="fb good">Correct: ${answerText(cur)}</div>`:`<div class="fb bad">Not quite. Try again or open the steps.</div>`;
+  if(cur.kind==='mc'){const b=$('pcard').querySelector(`.choice[data-ci="${$('ain').value}"]`);if(b){b.classList.add(ok?'right':'wrong');if(!ok)b.disabled=true}
+    if(ok)$('pcard').querySelectorAll('.choice').forEach(x=>x.disabled=true)}
   if(ok){$('more').innerHTML=stepsHTML(cur,false);solved=true;const inp=$('ain');inp.readOnly=true;inp.classList.add('locked');$('pcard').classList.add('solved');inp.setAttribute('aria-label','Your answer (correct)');
-    const b=$('bcheck');b.textContent='Next problem →';$('bnext').hidden=true;$('bhint').hidden=true;$('bsteps').hidden=true;b.focus({preventScroll:true})}
+    const b=$('bcheck');b.hidden=false;b.textContent='Next problem →';$('bnext').hidden=true;$('bhint').hidden=true;$('bsteps').hidden=true;b.focus({preventScroll:true})}
 }
 let solved=false;
 function nextFromCheck(){newProblem();const r=$('pcard').getBoundingClientRect();if(r.top<0)$('pcard').scrollIntoView({block:'start'});$('ain').focus({preventScroll:true})}
@@ -1805,13 +1924,15 @@ const tl=$('tlist');
 function renderTerms(){
   const q=tq.toLowerCase(),list=TERMS[subj].filter(t=>!q||(t[0]+' '+t[1]).toLowerCase().includes(q));
   $('tcount').textContent=`${list.length} term${list.length===1?'':'s'}`;
-  tl.innerHTML=list.map(t=>`<div class="term" tabindex="0"><h3>${t[0]}</h3><p class="def">${t[1]}</p>${t[2]?`<p class="ex">${t[2]}</p>`:''}</div>`).join('')||'<p class="note">No terms match that search.</p>';
+  tl.innerHTML=list.map(t=>`<div class="term" tabindex="0"><h3>${t[0]}</h3><p class="def">${t[1]}</p>${t[2]?`<p class="ex">${t[2]}</p>`:''}</div>`).join('')||
+    (TERMS[subj].length?'<p class="note">No terms match that search.</p>':'<p class="note">No flashcards yet. Add some from My subjects in the name menu.</p>');
 }
 tl.addEventListener('click',e=>{const t=e.target.closest('.term');if(t&&tl.classList.contains('quiz'))t.classList.toggle('open')});
 tl.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.classList.contains('term')&&tl.classList.contains('quiz')){e.preventDefault();e.target.classList.toggle('open')}});
 $('tsearch').addEventListener('input',e=>{tq=e.target.value;renderTerms()});
 $('quiz').addEventListener('change',e=>{tl.classList.toggle('quiz',e.target.checked);renderTerms()});
 function renderFormulas(){
+  if(!FORM[subj].length){$('formulas').innerHTML='<p class="note">Subjects you make don’t have a formula sheet. Put formulas in flashcards, and they’ll show up in Terms.</p>';return}
   $('formulas').innerHTML=FORM[subj].map((g,i)=>`<details class="fgroup"${i<2?' open':''}><summary>${g[0]}</summary><div class="ftable">${g[1].map(r=>`<div>${r[0]}</div><div>${r[1]}</div>`).join('')}</div></details>`).join('');
 }
 
@@ -1910,8 +2031,8 @@ function renderTests(){const el=$('tests');
   ${resumeCardHTML()}
   <div class="qgrid">
     <div class="card"><div><h3 class="h3">${subjName(subj)} knowledge check</h3>
-      <p class="sub">10 questions across every ${subjName(subj)} topic. Shows what you know and what to work on.</p></div>
-      <div class="actions"><button class="btn" id="kc" type="button">Start</button></div></div>
+      <p class="sub">${allKeys(subj).length?`10 questions across every ${subjName(subj)} topic. Shows what you know and what to work on.`:'This subject has no practice questions yet. Add some from My subjects in the name menu.'}</p></div>
+      ${allKeys(subj).length?'<div class="actions"><button class="btn" id="kc" type="button">Start</button></div>':''}</div>
     <div class="card"><div><h3 class="h3">Weak-spot test</h3>
       <p class="sub">${weak.length?'10 questions on the topics you miss most: '+weak.map(k=>`<b>${esc(splitKey(k)[1])}</b>`).join(', ')+'.':'Answer some problems first. Then this builds a test from the topics you miss most.'}</p></div>
       ${weak.length?'<div class="actions"><button class="btn" id="tweak" type="button">Start</button></div>':''}</div>
@@ -1939,7 +2060,7 @@ function renderTests(){const el=$('tests');
   if($('tresume')){$('tresume').onclick=resumeTest;$('tdiscard').onclick=()=>{T.confirmDiscard=true;renderTests()}}
   if($('treplaceyes')){$('treplaceyes').onclick=()=>{const a=T.pendingStart;T.pendingStart=null;clearActive();T.okReplace=true;startTest(...a)};$('treplaceno').onclick=()=>{T.pendingStart=null;renderTests()}}
   if($('tdiscyes')){$('tdiscyes').onclick=()=>{T.confirmDiscard=false;clearActive();refreshInfo();renderTests()};$('tdiscno').onclick=()=>{T.confirmDiscard=false;renderTests()}}
-  $('kc').onclick=()=>startTest(subjName(subj)+' knowledge check','check',allKeys(subj),10);
+  if($('kc'))$('kc').onclick=()=>startTest(subjName(subj)+' knowledge check','check',allKeys(subj),10);
   $('tname').oninput=e=>{T.name=e.target.value};
   $('tn').onchange=e=>{T.n=+e.target.value};
   el.querySelectorAll('#picker input[type=checkbox]').forEach(cb=>cb.onchange=()=>{cb.checked?T.sel.add(cb.dataset.k):T.sel.delete(cb.dataset.k);T.msg='';keepOpen()});
@@ -1965,7 +2086,8 @@ function renderRunner(el){const A=T.active,old=$('tin');if(old&&old.dataset.i!==
     <div class="prog" aria-hidden="true"><span style="width:${A.i/A.items.length*100}%"></span></div>
     <div class="count">${subjName(c.subj)} · ${c.name}</div>
     ${problemHTML(c)}
-    <form class="answer" id="tf"><input id="tin" data-i="${A.i}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${placeholder(c)}" aria-label="Your answer" value="${esc(it.raw)}"><button class="btn" type="submit">${last?'Finish test':'Next'}</button></form>
+    <form class="answer${c.kind==='mc'?' mc':''}" id="tf">${c.kind==='mc'?`<input type="hidden" id="tin" data-i="${A.i}" value="${esc(it.raw)}">${choicesHTML(c,it.raw===''?-1:+it.raw)}`
+      :`<input id="tin" data-i="${A.i}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${placeholder(c)}" aria-label="Your answer" value="${esc(it.raw)}">`}<button class="btn" type="submit">${last?'Finish test':'Next'}</button></form>
     ${keysHTML(c,'tin')}
     <div id="tfb"></div>
     ${T.confirmEnd?`<div class="fb neutral" style="display:flex;flex-direction:column;gap:10px">End the test now? Unanswered questions count as wrong.
@@ -1978,8 +2100,9 @@ function renderRunner(el){const A=T.active,old=$('tin');if(old&&old.dataset.i!==
     <p class="note">Answers are checked when you finish. Steps are shown in the review.</p></div>`;
   const inp=$('tin');inp.focus({preventScroll:true});
   const save=()=>{it.raw=inp.value};
+  el.querySelectorAll('.choice').forEach(b=>b.onclick=()=>{inp.value=b.dataset.ci;save();el.querySelectorAll('.choice').forEach(x=>x.setAttribute('aria-pressed',String(x===b)))});
   $('tf').onsubmit=e=>{e.preventDefault();const g=grade(c,inp.value);
-    if(g==='empty'){$('tfb').innerHTML=`<div class="fb neutral">Type an answer, or choose Skip.</div>`;return}
+    if(g==='empty'){$('tfb').innerHTML=`<div class="fb neutral">${c.kind==='mc'?'Pick an answer':'Type an answer'}, or choose Skip.</div>`;return}
     if(g==='bad'||g==='badtime'||g==='badrem'){$('tfb').innerHTML=`<div class="fb neutral">${BADMSG[g]}</div>`;return}
     save();if(last)finishTest();else{A.i++;saveActive();renderTests()}};
   $('tskip').onclick=()=>{it.raw='';inp.value='';if(last)finishTest();else{A.i++;saveActive();renderTests()}};
@@ -2014,7 +2137,7 @@ function renderResults(el){const R=T.results,pct=Math.round(100*R.score/R.total)
       <span class="pill ${it.res==='ok'?'m':'w'}">${it.res==='ok'?'Correct':it.res==='skip'?'Skipped':'Missed'}</span>
       <span><b>Q${i+1}</b> · ${it.p.name}</span></summary>
       <div class="rbody">${problemHTML(it.p)}
-      <div class="ftable"><div>Your answer</div><div>${it.raw.trim()?esc(it.raw):'(blank)'}${it.note?` <span class="count">${it.note}</span>`:''}</div><div>Correct answer</div><div>${answerText(it.p)}</div></div>
+      <div class="ftable"><div>Your answer</div><div>${it.raw.trim()?rawText(it.p,it.raw):'(blank)'}${it.note?` <span class="count">${it.note}</span>`:''}</div><div>Correct answer</div><div>${answerText(it.p)}</div></div>
       ${stepsHTML(it.p,false)}</div></details>`).join('')}</div></div>`;
   if(weakest)$('rpractice').onclick=()=>{const [sj,tp]=splitKey(weakest.k);T.results=null;goPractice(sj,tp)};
   $('rretake').onclick=()=>startTest(R.name,R.kind,R.keys,R.n,R.level,R.limit||0);
@@ -2025,7 +2148,7 @@ function goPractice(sj,tp){setView('practice');if(subj!==sj)setSubj(sj);topic=tp
 /* ================= backup & restore ================= */
 const BK={open:false,pending:null,msg:'',cls:'neutral',code:''};
 const b64e=t=>btoa(unescape(encodeURIComponent(t))),b64d=t=>decodeURIComponent(escape(atob(t)));
-function backupObj(){const d=JSON.parse(JSON.stringify(Store.data));d.lastBackup=Date.now();return{app:'subject-study-guide',v:1,name:Store.mode==='cloud'?'My progress':Store.local.current,saved:Date.now(),data:d}}
+function backupObj(){const d=JSON.parse(JSON.stringify(Store.data));d.lastBackup=Date.now();return{app:'subject-study-guide',v:1,name:Store.mode==='cloud'?'My progress':Store.local.current,saved:Date.now(),data:d,custom:JSON.parse(JSON.stringify(CUS.subjects))}}
 function parseBackup(txt){txt=String(txt||'').trim();let o;
   try{o=txt.startsWith('{')?JSON.parse(txt):JSON.parse(b64d(txt.replace(/^SSG1:/i,'').replace(/\s+/g,'')))}catch(e){return null}
   if(!o||o.app!=='subject-study-guide'||!o.data)return null;o.data=clean(o.data);return o}
@@ -2054,6 +2177,8 @@ function mergeInto(a,b){for(const k in b.topics){const x=a.topics[k],y=b.topics[
   for(const d in b.days)a.days[d]=Math.max(a.days[d]||0,b.days[d]);a.pc=Math.max(a.pc||0,b.pc||0);const rk=new Set(a.review.map(x=>x.k));b.review.forEach(x=>{if(!rk.has(x.k))a.review.push(x)})}
 function applyBackup(mode){const o=BK.pending;if(!o)return;const d=clean(o.data);BK.pending=null;BK.open=false;
   if(mode==='cancel')return bkMsg('','neutral');
+  if(Array.isArray(o.custom)&&o.custom.length&&!commitCustom(()=>mergeCustom(o.custom)))toast('The subjects in this backup didn’t fit in this browser’s storage, so they weren’t added.');
+  else if(Array.isArray(o.custom)&&o.custom.length)refreshSubjects();
   if(mode==='replace'){Object.keys(Store.data).forEach(k=>delete Store.data[k]);Object.assign(Store.data,d);Store.changed();return bkMsg('Progress replaced with the backup.','good')}
   if(mode==='merge'){mergeInto(Store.data,d);Store.changed();return bkMsg('Backup merged into the current progress.','good')}
   let n=String(o.name||'Student').slice(0,30);if(badName(n))n='Student';const base=n;let i=2;while(hasProf(n))n=base+' '+i++;
@@ -2069,6 +2194,7 @@ function backupCard(){const o=BK.pending;return `<div class="card"><h3 class="h3
     ${o?`<div class="fb neutral" style="display:flex;flex-direction:column;gap:10px;font-weight:400">
       <div>Backup of <b>${esc(o.name||'a student')}</b> from ${new Date(o.saved||Date.now()).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})}: ${bkSummary(o.data)}.</div>
       <div>Current progress${Store.mode==='local'?` for <b>${esc(Store.local.current)}</b>`:''}: ${bkSummary(Store.data)}.</div>
+      ${Array.isArray(o.custom)&&o.custom.length?`<div>The backup also has ${o.custom.length} subject${o.custom.length>1?'s':''} someone made. ${o.custom.length>1?'They’re':'It’s'} added to this device’s subjects whichever option you pick.</div>`:''}
       <div class="actions"><button class="btn" type="button" data-bk="merge">Merge</button><button class="btn ghost" type="button" data-bk="replace">Replace</button>${Store.mode==='local'?'<button class="btn ghost" type="button" data-bk="new">Load as a new student</button>':''}<button class="linkbtn" type="button" data-bk="cancel">Cancel</button></div>
       <p class="note">Merge combines both. Replace overwrites the current progress. A new student keeps both separate.</p></div>`:''}</div>`}
 function wireBackup(el){
@@ -2150,11 +2276,13 @@ function renderMenu(){const m=$('whomenu'),cloud=Store.mode==='cloud',cur0=Store
     <button class="mi${view==='progress'?' cur':''}" role="menuitem" type="button" data-act="progress"><span>Progress</span><span class="count">Topics, goal & history</span></button>
     <div class="msep"></div>
     <button class="mi" role="menuitemcheckbox" aria-checked="${tipsOn}" type="button" data-act="tips"><span>Tutor tips</span><span class="count">${tipsOn?'On':'Off'}</span></button>
+    <button class="mi" role="menuitem" type="button" data-act="subjects"><span>My subjects</span><span class="count">Create & share</span></button>
     ${FEEDBACK_KEY?`<button class="mi" role="menuitem" type="button" data-act="feedback"><span>Send feedback</span><span class="count">Ideas & mistakes</span></button>`:''}`;
   m.querySelectorAll('[data-prof]').forEach(b=>b.onclick=()=>{closeMenu();if(b.dataset.prof!==Store.local.current)Store.switchProfile(b.dataset.prof)});
   m.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{const a=b.dataset.act;
     if(a==='tips'){setTips(!tipsOn);renderMenu();const t=$('whomenu').querySelector('[data-act="tips"]');if(t)t.focus();return}
     if(a==='feedback'){closeMenu();openFeedback();return}
+    if(a==='subjects'){closeMenu();openMgr();return}
     if(a==='remove'){WM.mode='remove';WM.msg='';renderMenu();$('mremno').focus();return}
     if(a==='add'||a==='rename'){WM.mode=a;WM.msg='';renderMenu();const i=$('mname');i.focus();i.select();return}
     closeMenu();setView(a);window.scrollTo({top:0})});
@@ -2193,6 +2321,160 @@ applyTips();
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&T.active)saveActive()});
 window.addEventListener('pagehide',()=>{if(T.active)saveActive()});
 window.addEventListener('beforeunload',e=>{if(T.active){saveActive();if(T.active.limit&&!updating){e.preventDefault();e.returnValue=''}}});
+/* ---------- My subjects panel (create, edit, share, import custom subjects) ---------- */
+const CM={screen:'list',sid:null,draft:null,msg:'',cls:'neutral',creating:false,importOpen:false,shareId:null,shareCode:'',delId:null,delItem:null};
+const TYPE_LABEL={text:'Typed answer',mc:'Multiple choice',card:'Flashcard'};
+function openMgr(screen,sid){Object.assign(CM,{screen:screen||'list',sid:sid||null,draft:null,msg:'',creating:false,importOpen:false,shareId:null,shareCode:'',delId:null,delItem:null});
+  $('cmgr').hidden=false;document.body.style.overflow='hidden';renderMgr()}
+function closeMgr(){$('cmgr').hidden=true;document.body.style.overflow='';CM.draft=null}
+function cmSay(m,cls){CM.msg=m;CM.cls=cls||'neutral'}
+const cmMsg=()=>CM.msg?`<div class="fb ${CM.cls}" role="status">${CM.msg}</div>`:'';
+const noSpace='There isn’t enough storage space for that. Remove some pictures or subjects and try again.';
+function renderMgr(){const b=$('cmbody');
+  if(CM.screen==='item'&&CM.draft&&findSub(CM.sid))b.innerHTML=mgrItem();
+  else if(CM.screen==='edit'&&findSub(CM.sid))b.innerHTML=mgrEdit();
+  else{CM.screen='list';b.innerHTML=mgrList()}
+  $('cmgr').scrollTop=0}
+function mgrList(){const used=JSON.stringify(CUS).length/1e6;
+  return `<div class="phead"><h2 id="cmtitle">My subjects</h2><button class="xbtn" type="button" data-cm="close" aria-label="Close">✕</button></div>
+  <p class="note">Make your own subjects with typed-answer questions, multiple choice, flashcards and pictures. They’re saved on this device for every student, included in backups, and can be shared with a code.</p>
+  ${cmMsg()}
+  <div class="actions"><button class="btn" type="button" data-cm="new">Create a subject</button><button class="btn ghost" type="button" data-cm="import">Add a shared subject</button></div>
+  ${CM.creating?`<form class="card" id="cmnewf"><label class="field">Subject name<input type="text" id="cmname" maxlength="40" placeholder="e.g. Spanish vocabulary" autocomplete="off"></label>
+    <div class="actions"><button class="btn" type="submit">Create</button><button class="btn ghost" type="button" data-cm="cancelnew">Cancel</button></div></form>`:''}
+  ${CM.importOpen?`<div class="card"><h3 class="h3">Add a shared subject</h3>
+    <label class="field">Paste a share code<textarea id="cmcode" class="codebox" rows="3" placeholder="SSGS1:…"></textarea></label>
+    <div class="actions"><button class="btn" type="button" data-cm="usecode">Add subject</button><button class="btn ghost" type="button" data-cm="pickfile">Choose a subject file</button><button class="linkbtn" type="button" data-cm="cancelimport">Cancel</button></div>
+    <input type="file" id="cmfile" accept=".json,.txt,application/json,text/plain" hidden></div>`:''}
+  ${CUS.subjects.length?CUS.subjects.map(s=>{const qs=s.items.filter(i=>i.type!=='card'),cards=s.items.length-qs.length,tops=new Set(qs.map(i=>i.topic)).size;
+    return `<div class="card"><div><h3 class="h3">${s.name}</h3><p class="count" style="margin:0">${qs.length} question${qs.length===1?'':'s'}${qs.length?` in ${tops} topic${tops===1?'':'s'}`:''} · ${cards} flashcard${cards===1?'':'s'}</p></div>
+      <div class="actions"><button class="btn" type="button" data-cm="practice" data-id="${s.id}">Practice</button><button class="btn ghost" type="button" data-cm="edit" data-id="${s.id}">Edit</button><button class="btn ghost" type="button" data-cm="share" data-id="${s.id}">Share</button><button class="linkbtn" type="button" data-cm="del" data-id="${s.id}">Delete</button></div>
+      ${CM.shareId===s.id?`<div class="fb neutral" style="display:flex;flex-direction:column;gap:10px;font-weight:400">
+        <span>Send this to anyone. They add it from <b>My subjects → Add a shared subject</b>. If you change the subject later, share it again and their copy updates without losing progress.</span>
+        <div class="actions"><button class="btn" type="button" data-cm="copycode" data-id="${s.id}">Copy share code</button><button class="btn ghost" type="button" data-cm="savefile" data-id="${s.id}">Save subject file</button></div>
+        ${CM.shareCode?`<textarea id="cmsharecode" class="codebox" readonly rows="3" aria-label="Share code">${CM.shareCode}</textarea>`:''}
+        ${s.items.some(i=>i.img)?'<span class="note">Pictures make the code long. If it won’t paste, send the file instead.</span>':''}</div>`:''}
+      ${CM.delId===s.id?`<div class="fb bad" style="display:flex;flex-direction:column;gap:10px;font-weight:400">Delete “${s.name}” and all ${s.items.length} of its questions and flashcards from this device? This can’t be undone.
+        <div class="actions"><button class="btn" type="button" data-cm="delyes" data-id="${s.id}">Delete</button><button class="btn ghost" type="button" data-cm="delno">Cancel</button></div></div>`:''}</div>`}).join('')
+    :'<div class="card"><p class="sub" style="margin:0">You haven’t made any subjects yet. Create one, or add one someone shared with you.</p></div>'}
+  <p class="note">Storage used by your subjects: ${used<0.1?'under 0.1':used.toFixed(1)} MB of ${CUS_LIMIT/1e6} MB.</p>`}
+function mgrEdit(){const s=findSub(CM.sid),qs=s.items.filter(i=>i.type!=='card'),cards=s.items.filter(i=>i.type==='card'),groups={};
+  qs.forEach(i=>(groups[i.topic]=groups[i.topic]||[]).push(i));
+  const row=(it,text)=>`<div class="cmrow"><div class="cmprev">${it.type==='card'?'':`<span class="tag soft">${it.type==='mc'?'Choice':'Typed'}</span>`}${it.img?'<span aria-label="has a picture" title="Has a picture">🖼</span>':''}<span class="t">${esc(text)}</span></div>
+    <div class="actions"><button class="linkbtn" type="button" data-cm="edititem" data-id="${it.id}">Edit</button><button class="linkbtn" type="button" data-cm="delitem" data-id="${it.id}">Delete</button></div></div>
+    ${CM.delItem===it.id?`<div class="fb bad" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-weight:400">Delete this ${it.type==='card'?'flashcard':'question'}?<div class="actions"><button class="btn" type="button" data-cm="delitemyes" data-id="${it.id}">Delete</button><button class="btn ghost" type="button" data-cm="delitemno">Cancel</button></div></div>`:''}`;
+  return `<div class="phead"><button class="linkbtn" type="button" data-cm="back">← My subjects</button><button class="xbtn" type="button" data-cm="close" aria-label="Close">✕</button></div>
+  <h2 id="cmtitle">${s.name}</h2>
+  <label class="field">Subject name<input type="text" id="cmrename" maxlength="40" value="${s.name}" autocomplete="off"></label>
+  ${cmMsg()}
+  <div class="actions"><button class="btn" type="button" data-cm="additem" data-type="text">+ Question</button><button class="btn ghost" type="button" data-cm="additem" data-type="card">+ Flashcard</button><button class="btn ghost" type="button" data-cm="practice" data-id="${s.id}">Practice</button></div>
+  <div class="card"><h3 class="h3">Questions <span class="count">${qs.length}</span></h3>
+    ${qs.length?Object.keys(groups).map(tp=>`<p class="cmtopic">${tp}</p><div>${groups[tp].map(it=>row(it,it.q||'(picture question)')).join('')}</div>`).join('')
+      :'<p class="note">No questions yet. Questions show up in Practice and Tests.</p>'}</div>
+  <div class="card"><h3 class="h3">Flashcards <span class="count">${cards.length}</span></h3>
+    ${cards.length?`<div>${cards.map(it=>row(it,it.term+' — '+(it.def||'(picture)'))).join('')}</div>`:'<p class="note">No flashcards yet. Flashcards show up in Terms, where Quiz me hides the back until you tap.</p>'}</div>`}
+function mgrItem(){const s=findSub(CM.sid),d=CM.draft,isNew=!s.items.some(i=>i.id===d.id),card=d.type==='card';
+  const topics=[...new Set(s.items.filter(i=>i.type!=='card').map(i=>i.topic))];
+  return `<div class="phead"><button class="linkbtn" type="button" data-cm="backedit">← ${s.name}</button><button class="xbtn" type="button" data-cm="close" aria-label="Close">✕</button></div>
+  <h2 id="cmtitle">${isNew?'New':'Edit'} ${card?'flashcard':'question'}</h2>
+  <div class="seg" role="group" aria-label="Question type">${['text','mc','card'].map(t=>`<button type="button" data-cm="type" data-type="${t}" aria-pressed="${d.type===t}">${TYPE_LABEL[t]}</button>`).join('')}</div>
+  ${card?`<label class="field">Term (front)<input type="text" id="cmterm" maxlength="200" value="${esc(d.term||'')}" autocomplete="off"></label>
+    <label class="field">Definition (back)<textarea id="cmdef" maxlength="2000">${esc(d.def||'')}</textarea></label>`
+  :`<label class="field">Topic <span class="opt">(questions are grouped by topic in Practice and Progress)</span><input type="text" id="cmtopic" maxlength="40" list="cmtopics" value="${esc(d.topic||'')}" placeholder="General" autocomplete="off"><datalist id="cmtopics">${topics.map(t=>`<option value="${t}">`).join('')}</datalist></label>
+    <label class="field">Question<textarea id="cmq" maxlength="2000" placeholder="Type the question">${esc(d.q||'')}</textarea></label>`}
+  <div class="field">Picture <span class="opt">(optional)</span>
+    ${d.img?`<div class="imgprev"><img src="${d.img}" alt="Picture preview"><button class="linkbtn" type="button" data-cm="rmimg">Remove picture</button></div>`:`<div class="actions"><button class="btn ghost" type="button" data-cm="addimg">Add picture</button></div>`}
+    <input type="file" id="cmimg" accept="image/*" hidden></div>
+  ${d.type==='text'?`<label class="field">Answer<input type="text" id="cmans" maxlength="200" value="${esc(d.ans||'')}" autocomplete="off" autocapitalize="off"></label>
+    <label class="field">Other accepted answers <span class="opt">(optional, separate with ;)</span><input type="text" id="cmalt" maxlength="600" value="${esc((d.alt||[]).join('; '))}" autocomplete="off" autocapitalize="off"></label>
+    <p class="note" style="margin-top:-6px">Capitals and extra spaces don’t matter. Number answers are matched by value, so an answer of 0.5 also accepts 1/2.</p>`:''}
+  ${d.type==='mc'?`<div class="field">Choices <span class="opt">(tap the circle next to the correct one)</span>
+    ${d.choices.map((c,i)=>`<div class="mcrow"><input type="radio" name="cmcorrect" value="${i}" aria-label="Choice ${'ABCDEF'[i]} is correct"${d.correct===i?' checked':''}><input type="text" class="cmch" data-i="${i}" maxlength="300" value="${esc(c)}" placeholder="Choice ${'ABCDEF'[i]}" autocomplete="off">${d.choices.length>2?`<button class="xbtn" type="button" data-cm="rmchoice" data-i="${i}" aria-label="Remove choice ${'ABCDEF'[i]}">✕</button>`:''}</div>`).join('')}
+    ${d.choices.length<6?'<div><button class="linkbtn" type="button" data-cm="addchoice">+ Add choice</button></div>':''}</div>`:''}
+  ${card?'':`<label class="field">Explanation <span class="opt">(optional, shown as a hint and after answering)</span><textarea id="cmexp" maxlength="2000">${esc(d.explain||'')}</textarea></label>`}
+  ${cmMsg()}
+  <div class="actions"><button class="btn" type="button" data-cm="saveitem">Save</button><button class="btn ghost" type="button" data-cm="saveitem" data-more="1">Save and add another</button><button class="linkbtn" type="button" data-cm="backedit">Cancel</button></div>`}
+// Copy what's typed in the item editor into CM.draft (done before every re-render so nothing is lost).
+function syncDraft(){const d=CM.draft;if(!d||CM.screen!=='item')return;const v=id=>$(id)?$(id).value:undefined;
+  if(v('cmterm')!==undefined)d.term=v('cmterm');if(v('cmdef')!==undefined)d.def=v('cmdef');if(v('cmtopic')!==undefined)d.topic=v('cmtopic');
+  if(v('cmq')!==undefined)d.q=v('cmq');if(v('cmans')!==undefined)d.ans=v('cmans');if(v('cmalt')!==undefined)d.alt=v('cmalt').split(';').map(x=>x.trim()).filter(Boolean);
+  if(v('cmexp')!==undefined)d.explain=v('cmexp');
+  const ch=[...document.querySelectorAll('#cmbody .cmch')];if(ch.length)d.choices=ch.map(x=>x.value);
+  const r=document.querySelector('#cmbody input[name=cmcorrect]:checked');if(r)d.correct=+r.value}
+function blankDraft(type,topic){return{id:newId('i'),type,topic:topic||'',q:'',ans:'',alt:[],choices:['','','',''],correct:-1,explain:'',term:'',def:'',img:''}}
+function saveDraft(){const d=CM.draft,s=findSub(CM.sid);const it={...d};
+  if(it.type==='mc'){const keep=it.choices.map((c,i)=>[c.trim(),i]).filter(x=>x[0]);it.correct=keep.findIndex(x=>x[1]===d.correct);it.choices=keep.map(x=>x[0]);
+    if(!(it.q||'').trim()&&!it.img)return 'Type the question, or add a picture.';
+    if(it.choices.length<2)return 'Add at least two choices.';if(it.correct<0)return 'Tap the circle next to the correct choice.'}
+  else if(it.type==='text'){if(!(it.q||'').trim()&&!it.img)return 'Type the question, or add a picture.';if(!(it.ans||'').trim())return 'Type the answer.'}
+  else{if(!(it.term||'').trim())return 'Type the term for the front of the card.';if(!(it.def||'').trim()&&!it.img)return 'Type the definition for the back of the card.'}
+  const c=cleanItem(it);if(!c)return 'Something’s missing. Check each box and try again.';
+  if(!commitCustom(()=>{const i=s.items.findIndex(x=>x.id===c.id);if(i<0)s.items.push(c);else s.items[i]=c;s.updated=Date.now()}))return noSpace;
+  return ''}
+function appBack(){  // phone back button: close the top-most panel. Returns true if something closed.
+  if(!$('cmgr').hidden){if(CM.screen==='item'){CM.screen='edit';CM.draft=null;CM.msg=''}else if(CM.screen==='edit'){CM.screen='list';CM.msg=''}else{closeMgr();return true}renderMgr();return true}
+  if(!$('fbsheet').hidden){closeFeedback();return true}
+  if(WM.open){closeMenu();return true}
+  return false}
+$('cmgr').addEventListener('keydown',e=>{if(e.key==='Escape'&&e.target.tagName!=='TEXTAREA')appBack()});
+$('cmgr').addEventListener('submit',e=>{if(e.target.id!=='cmnewf')return;e.preventDefault();const name=cleanName($('cmname').value,40);
+  if(!name){cmSay('Type a name for the subject.');renderMgr();return $('cmname').focus()}
+  const s={id:newId('c_'),name,items:[],updated:Date.now()};
+  if(!commitCustom(()=>CUS.subjects.push(s))){cmSay(noSpace,'bad');return renderMgr()}
+  Object.assign(CM,{creating:false,screen:'edit',sid:s.id});cmSay(`Created “${name}”. Add questions or flashcards to it.`,'good');renderMgr()});
+$('cmgr').addEventListener('change',e=>{
+  if(e.target.id==='cmrename'){const s=findSub(CM.sid),name=cleanName(e.target.value,40);if(!s||!name||name===s.name){e.target.value=s?s.name:'';return}
+    if(commitCustom(()=>{s.name=name;s.updated=Date.now()})){refreshSubjects();cmSay('Renamed.','good')}else cmSay(noSpace,'bad');renderMgr()}
+  if(e.target.id==='cmimg'){const f=e.target.files&&e.target.files[0];if(!f)return;syncDraft();cmSay('Adding picture…');renderMgr();
+    shrinkImage(f).then(img=>{CM.draft.img=img;CM.msg=''},()=>cmSay('That picture couldn’t be used. Try a different photo or a screenshot.','bad')).then(renderMgr)}
+  if(e.target.id==='cmfile'){const f=e.target.files&&e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>importShared(r.result);r.onerror=()=>{cmSay('Couldn’t read that file.','bad');renderMgr()};r.readAsText(f)}});
+function importShared(txt){if(/^\s*SSG1:/i.test(txt)){cmSay('That’s a backup code, not a subject. Load it from Progress → Backup instead.','bad');return renderMgr()}
+  const s=parseShared(txt);if(!s){cmSay('That isn’t a shared subject. Check that you copied the whole code or picked the right file.','bad');return renderMgr()}
+  const prev=findSub(s.id),prevUpdated=prev&&prev.updated;
+  if(prev&&s.updated<prevUpdated){cmSay(`You already have a newer copy of “${s.name}”, so nothing changed.`);return renderMgr()}
+  if(!commitCustom(()=>mergeCustom([s]))){cmSay(noSpace,'bad');return renderMgr()}
+  refreshSubjects();CM.importOpen=false;const n=s.items.length;
+  cmSay(prev?`Updated your copy of “${s.name}”. Your progress on it is kept.`:`Added “${s.name}” (${n} question${n===1?'':'s'} and flashcard${n===1?'':'s'}). Pick it from the subject menu to practice.`,'good');
+  renderMgr()}
+$('cmgr').addEventListener('click',e=>{const b=e.target.closest('[data-cm]');if(!b)return;const a=b.dataset.cm,id=b.dataset.id;syncDraft();
+  const s=findSub(CM.sid);
+  switch(a){
+    case 'close':return closeMgr();
+    case 'new':Object.assign(CM,{creating:true,importOpen:false,msg:''});renderMgr();return $('cmname').focus();
+    case 'cancelnew':CM.creating=false;break;
+    case 'import':Object.assign(CM,{importOpen:true,creating:false,msg:''});renderMgr();return $('cmcode').focus();
+    case 'cancelimport':CM.importOpen=false;break;
+    case 'usecode':return importShared($('cmcode').value);
+    case 'pickfile':return $('cmfile').click();
+    case 'practice':closeMgr();setView('practice');setSubj(id);window.scrollTo({top:0});return;
+    case 'edit':Object.assign(CM,{screen:'edit',sid:id,msg:'',delItem:null});break;
+    case 'share':CM.shareId=CM.shareId===id?null:id;CM.shareCode='';CM.delId=null;CM.msg='';break;
+    case 'copycode':{const code=shareCode(findSub(id));
+      copyText(code,()=>{CM.shareCode='';cmSay('Share code copied. Send it in a message or email.','good');renderMgr()},()=>{CM.shareCode=code;cmSay('Copy didn’t work here. Select all of the code below and copy it yourself.');renderMgr()});return}
+    case 'savefile':{const sub=findSub(id),ok=downloadFile(`subject-${sub.name.replace(/[^\w-]+/g,'-')}.json`,JSON.stringify({app:'subject-study-guide',type:'subject',v:1,subject:sub}));
+      cmSay(ok?'Subject file saved. Send it to anyone, and they can add it with Choose a subject file.':'Saving a file didn’t work here. Use Copy share code instead.',ok?'good':'neutral');break}
+    case 'del':CM.delId=CM.delId===id?null:id;CM.shareId=null;CM.msg='';break;
+    case 'delno':CM.delId=null;break;
+    case 'delyes':{const sub=findSub(id);if(!commitCustom(()=>{CUS.subjects=CUS.subjects.filter(x=>x.id!==id)})){cmSay(noSpace,'bad');break}
+      [...T.sel].forEach(k=>{if(k.startsWith(id+'|'))T.sel.delete(k)});CM.delId=null;refreshSubjects();cmSay(`Deleted “${sub.name}”.`,'good');break}
+    case 'back':Object.assign(CM,{screen:'list',msg:''});break;
+    case 'backedit':Object.assign(CM,{screen:'edit',draft:null,msg:''});break;
+    case 'additem':Object.assign(CM,{screen:'item',draft:blankDraft(b.dataset.type),msg:''});break;
+    case 'edititem':{const it=s.items.find(x=>x.id===id);if(!it)break;CM.draft={...blankDraft(it.type),...JSON.parse(JSON.stringify(it))};Object.assign(CM,{screen:'item',msg:''});break}
+    case 'delitem':CM.delItem=CM.delItem===id?null:id;break;
+    case 'delitemno':CM.delItem=null;break;
+    case 'delitemyes':if(commitCustom(()=>{s.items=s.items.filter(x=>x.id!==id);s.updated=Date.now()})){refreshSubjects();cmSay('Deleted.','good')}else cmSay(noSpace,'bad');CM.delItem=null;break;
+    case 'type':{const d=CM.draft;d.type=b.dataset.type;if(d.type==='mc'&&d.choices.length<2)d.choices=['','','',''];CM.msg='';break}
+    case 'addchoice':if(CM.draft.choices.length<6)CM.draft.choices.push('');break;
+    case 'rmchoice':{const d=CM.draft,i=+b.dataset.i;d.choices.splice(i,1);if(d.correct===i)d.correct=-1;else if(d.correct>i)d.correct--;break}
+    case 'addimg':return $('cmimg').click();
+    case 'rmimg':CM.draft.img='';break;
+    case 'saveitem':{const err=saveDraft();if(err){cmSay(err,'bad');break}const d=CM.draft;refreshSubjects();
+      if(b.dataset.more){CM.draft=blankDraft(d.type,d.topic);cmSay('Saved. Add the next one.','good')}
+      else{Object.assign(CM,{screen:'edit',draft:null});cmSay('Saved.','good')}break}
+    default:return}
+  renderMgr()});
+
 /* ---------- feedback (student menu → Send feedback) ---------- */
 // Messages are emailed to the site owner by Web3Forms (web3forms.com). The access key is meant to be public:
 // it can only send to the owner's inbox, and the address itself never appears here. Empty key = menu item hidden.
@@ -2203,7 +2485,7 @@ function feedbackContext(){
   const where=window.ReactNativeWebView?'Phone app':(navigator.standalone||matchMedia('(display-mode: standalone)').matches)?'Home-screen app':'Browser';
   const L=[`Section: ${view} · Subject: ${subjName(subj)}`];
   if(view==='practice'&&cur){L.push(`Problem: ${cur.name} (${LEVELS[cur.level-1]})`);const q=plain(cur.story||cur.q);if(q)L.push(q);if(cur.ask)L.push(plain(cur.ask));
-    const a=$('ain')&&$('ain').value.trim();if(a)L.push(`Their answer: ${a}`)}
+    const a=$('ain')&&$('ain').value.trim();if(a)L.push(`Their answer: ${cur.kind==='mc'?(cur.choices[+a]||''):a}`)}
   L.push(`${where} · ${innerWidth}×${innerHeight}`);return L.join('\n')}
 function fbOut(m,cls){$('fbout').innerHTML=m?`<div class="fb ${cls}">${m}</div>`:''}
 function openFeedback(){$('fbctx').textContent=feedbackContext();$('fbctx').hidden=!$('fbctxon').checked;fbOut('');

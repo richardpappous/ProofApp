@@ -56,6 +56,10 @@ export const BRIDGE = `(function(){
     };
     if (view === 'progress') renderProgress(); // re-bind the backup buttons if they're showing
 
+    // The site's general copy/save helpers (used for sharing custom subjects).
+    if (typeof copyText === 'function') copyText = function (text, ok) { post({ type: 'copy', code: text, label: 'Copied' }); ok(); };
+    if (typeof downloadFile === 'function') downloadFile = function (name, text) { post({ type: 'file', name: name, text: text }); return true; };
+
     // Vibrate on right and wrong answers.
     // (#fb is rebuilt with every new problem, so watch the whole problem card.)
     var card = document.getElementById('pcard');
@@ -68,13 +72,13 @@ export const BRIDGE = `(function(){
       });
     }).observe(card, { childList: true, subtree: true });
 
-    // Track the student menu and feedback form so the phone's back button can close them.
-    var menu = document.getElementById('whomenu'), sheet = document.getElementById('fbsheet');
+    // Track the menu and pop-up panels so the phone's back button closes them instead of leaving the app.
+    var panels = ['whomenu', 'fbsheet', 'cmgr'].map(function (id) { return document.getElementById(id); }).filter(Boolean);
     var sendOpen = function () {
-      post({ type: 'menu', open: !!(menu && !menu.hidden) || !!(sheet && !sheet.hidden) });
+      post({ type: 'menu', open: panels.some(function (el) { return !el.hidden; }) });
     };
-    [menu, sheet].forEach(function (el) {
-      if (el) new MutationObserver(sendOpen).observe(el, { attributes: true, attributeFilter: ['hidden'] });
+    panels.forEach(function (el) {
+      new MutationObserver(sendOpen).observe(el, { attributes: true, attributeFilter: ['hidden'] });
     });
 
     post({ type: 'ready', view: view });
@@ -85,5 +89,7 @@ export const BRIDGE = `(function(){
 
 // Commands the app sends into the page.
 export const goTo = (v) => `setView(${JSON.stringify(v)});true;`;
-export const BACK = `var fs = document.getElementById('fbsheet');
-if (fs && !fs.hidden) { closeFeedback(); } else if (WM.open) { closeMenu(); } else if (view !== 'practice') { setView('practice'); }true;`;
+// appBack() (in index.html) closes whichever panel or menu is open and returns true if it did.
+export const BACK = `if (!(typeof appBack === 'function' && appBack())) {
+  if (WM.open) { closeMenu(); } else if (view !== 'practice') { setView('practice'); }
+}true;`;

@@ -87,7 +87,7 @@ function Main({ dark }) {
         break;
       case 'copy':
         await Clipboard.setStringAsync(msg.code);
-        setSnack('Backup code copied');
+        setSnack(msg.label || 'Backup code copied');
         break;
       case 'file':
         await shareBackup(msg.name, msg.text);
