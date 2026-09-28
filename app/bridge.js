@@ -66,11 +66,14 @@ export const BRIDGE = `(function(){
       });
     }).observe(card, { childList: true, subtree: true });
 
-    // Track the student menu so the phone's back button can close it.
-    var menu = document.getElementById('whomenu');
-    if (menu) new MutationObserver(function () {
-      post({ type: 'menu', open: !menu.hidden });
-    }).observe(menu, { attributes: true, attributeFilter: ['hidden'] });
+    // Track the student menu and feedback form so the phone's back button can close them.
+    var menu = document.getElementById('whomenu'), sheet = document.getElementById('fbsheet');
+    var sendOpen = function () {
+      post({ type: 'menu', open: !!(menu && !menu.hidden) || !!(sheet && !sheet.hidden) });
+    };
+    [menu, sheet].forEach(function (el) {
+      if (el) new MutationObserver(sendOpen).observe(el, { attributes: true, attributeFilter: ['hidden'] });
+    });
 
     post({ type: 'ready', view: view });
   } catch (e) {
@@ -80,4 +83,5 @@ export const BRIDGE = `(function(){
 
 // Commands the app sends into the page.
 export const goTo = (v) => `setView(${JSON.stringify(v)});true;`;
-export const BACK = `if (WM.open) { closeMenu(); } else if (view !== 'practice') { setView('practice'); }true;`;
+export const BACK = `var fs = document.getElementById('fbsheet');
+if (fs && !fs.hidden) { closeFeedback(); } else if (WM.open) { closeMenu(); } else if (view !== 'practice') { setView('practice'); }true;`;
