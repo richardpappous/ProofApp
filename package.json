@@ -1,0 +1,13 @@
+{
+  "name": "subject-study-guide-tests",
+  "private": true,
+  "description": "Test scripts for the Subject Study Guide site (index.html). The site itself needs no build.",
+  "scripts": {
+    "test": "npm run test:problems && npm run test:ui",
+    "test:problems": "node tests/check-problems.js",
+    "test:ui": "node tests/ui.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.50.0"
+  }
+}

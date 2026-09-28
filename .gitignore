@@ -1,0 +1,10 @@
+node_modules/
+tests/screens/
+app/node_modules/
+app/.expo/
+app/dist/
+.DS_Store
+
+# Private project notes (stay on this computer)
+CLAUDE.md
+MEMORY.md

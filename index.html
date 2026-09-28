@@ -213,6 +213,16 @@ details.fold[open]{padding-bottom:20px}
 .checks input{width:18px;height:18px;accent-color:var(--accent);flex:none}
 .linkbtn{background:none;border:0;color:var(--accent);font:700 14px var(--body);cursor:pointer;padding:6px 4px}
 .btn:disabled{opacity:.4;cursor:default}
+.welcome{position:fixed;inset:0;z-index:50;overflow-y:auto;background:var(--paper);padding:max(28px,env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom,0px))}
+.wcard{max-width:600px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.wcard h2{font-family:var(--display);font-weight:800;font-size:clamp(26px,6.5vw,36px);line-height:1.08;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.wopts{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-top:4px}
+.wopt{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:14px 16px;cursor:pointer;color:var(--ink);font:15px var(--body)}
+.wopt b{font-family:var(--display);font-size:19px;font-weight:800}
+.wopt em{font-style:normal;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.wopt span{color:var(--muted);font-size:14px;line-height:1.4}
+.wopt:hover,.wopt:focus-visible{border-color:var(--accent);background:var(--accent-soft);outline:none}
+.wcard .linkbtn{align-self:center}
 .field{display:flex;flex-direction:column;gap:6px;font-weight:700;font-size:14px}
 .field input[type=text]{font:16px var(--body);padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);max-width:420px}
 .prog{height:6px;background:var(--accent-soft);border-radius:99px;overflow:hidden}
@@ -277,6 +287,15 @@ details.fold[open]{padding-bottom:20px}
   <section id="formulas" class="wrap" style="gap:12px;width:100%" hidden></section>
 </div>
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<div class="welcome" id="welcome" role="dialog" aria-modal="true" aria-labelledby="wtitle" hidden>
+  <div class="wcard">
+    <div class="eyebrow">Welcome</div>
+    <h2 id="wtitle">What math are you working on?</h2>
+    <p class="note">You’ll start there. You can switch subjects anytime from the menu at the top.</p>
+    <div class="wopts" id="wopts"></div>
+    <button class="linkbtn" id="wskip" type="button">Skip for now</button>
+  </div>
+</div>
 
 <script>
 /* ================= helpers ================= */
@@ -2092,6 +2111,29 @@ applyTips();
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&T.active)saveActive()});
 window.addEventListener('pagehide',()=>{if(T.active)saveActive()});
 window.addEventListener('beforeunload',e=>{if(T.active){saveActive();if(T.active.limit){e.preventDefault();e.returnValue=''}}});
+/* ---------- first visit: ask which math they're working on ---------- */
+// ssg-start: 'pending' until they pick (or skip), then 'done'. Anyone who already has saved data counts as done.
+let welcomeState='done';
+try{welcomeState=localStorage.getItem('ssg-start')||(localStorage.getItem('ssg-ui')||localStorage.getItem(LSK)?'done':'pending');localStorage.setItem('ssg-start',welcomeState)}catch(e){}
+const WDESC={elem:['Grades 1–5','Place value, the four operations, fractions, decimals, money and time'],
+  ms:['Grades 6–8','Integers, fractions, percents, ratios, exponents and order of operations'],
+  alg1:['High school','Equations, inequalities, slope, systems and factoring'],
+  geo:['High school','Angles, area, volume, the Pythagorean theorem and circles'],
+  alg2:['High school','Quadratics, complex numbers, exponentials, logs and sequences'],
+  pre:['High school','Trig, the unit circle, radians, asymptotes and limits'],
+  phys:['High school','Motion, forces, energy, momentum, circuits and waves']};
+function openWelcome(){const w=$('welcome');
+  $('wopts').innerHTML=SUBJ.map(s=>{const d=WDESC[s.id]||['',''];return `<button class="wopt" type="button" data-subj="${s.id}"><b>${s.name}</b>${d[0]?`<em>${d[0]}</em>`:''}${d[1]?`<span>${d[1]}</span>`:''}</button>`}).join('');
+  $('wopts').querySelectorAll('[data-subj]').forEach(b=>b.onclick=()=>closeWelcome(b.dataset.subj));
+  w.hidden=false;document.body.style.overflow='hidden';w.scrollTop=0;$('wopts').querySelector('.wopt').focus({preventScroll:true})}
+function closeWelcome(id){try{localStorage.setItem('ssg-start','done')}catch(e){}
+  $('welcome').hidden=true;document.body.style.overflow='';
+  if(!id)return;
+  if(view!=='practice')setView('practice');
+  setSubj(id);saveUI();window.scrollTo({top:0});
+  toast(`Starting with ${subjName(id)}. You can switch subjects anytime at the top.`)}
+$('wskip').onclick=()=>closeWelcome();
+$('welcome').addEventListener('keydown',e=>{if(e.key==='Escape')closeWelcome()});
 Store.loadLocal();
 try{const l=+localStorage.getItem('ssg-level');if(l>=1&&l<=3)LEVEL=l}catch(e){}
 setLevel(LEVEL);
@@ -2105,6 +2147,7 @@ if(startView!=='practice')setView(startView);
 saveUI();
 onStore();
 Store.initCloud();
+if(welcomeState==='pending'&&!hashSubj)openWelcome();
 </script>
 
 
