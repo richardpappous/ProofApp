@@ -1833,15 +1833,33 @@ function buildSubjSelect(){const o=s=>`<option value="${s.id}">${s.name}</option
 function refreshSubjects(){if(!SUBJ.some(s=>s.id===subj))setSubj(SUBJ[0].id);else if(isCustom(subj))setSubj(subj)}
 // Merge subjects from a backup or share: same id = the newer copy wins (keeps progress); new ids are added.
 function mergeCustom(list){const added=[];for(const raw of list){const s=cleanSubject(raw);if(!s)continue;const i=CUS.subjects.findIndex(x=>x.id===s.id);
-    if(i<0){CUS.subjects.push(s);added.push(s)}else if(s.updated>=CUS.subjects[i].updated)CUS.subjects[i]=s}return added}
+    if(i<0){CUS.subjects.push(s);added.push(s)}else if(s.updated>=CUS.subjects[i].updated){
+      // Share codes leave pictures out, so keep any picture this device already has for the same question.
+      const old=CUS.subjects[i];s.items.forEach(it=>{if(!it.img){const o=old.items.find(x=>x.id===it.id);if(o&&o.img)it.img=o.img}});CUS.subjects[i]=s}}return added}
 // Copy text / save a file. The phone app's bridge replaces these two with native versions.
 function copyText(text,ok,fail){try{navigator.clipboard.writeText(text).then(ok,fail)}catch(e){fail()}}
 function downloadFile(name,text){try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'application/json'}));a.download=name;document.body.appendChild(a);a.click();
   setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);return true}catch(e){return false}}
-const shareCode=s=>'SSGS1:'+b64e(JSON.stringify({app:'subject-study-guide',type:'subject',v:1,subject:s}));
-function parseShared(txt){txt=String(txt||'').trim();let o;
-  try{o=txt.startsWith('{')?JSON.parse(txt):JSON.parse(b64d(txt.replace(/^SSGS1:/i,'').replace(/\s+/g,'')))}catch(e){return null}
-  return o&&o.app==='subject-study-guide'&&o.type==='subject'?cleanSubject(o.subject):null}
+// Share codes: "SSGS2:" + base64 of the subject compressed with deflate, WITHOUT pictures (one photo adds
+// ~75,000 characters, too long for messaging apps). Pictures travel in the subject file instead.
+// "SSGS1:" (uncompressed, from before) still imports.
+const toB64=u8=>{let s='';for(let i=0;i<u8.length;i+=32768)s+=String.fromCharCode.apply(null,u8.subarray(i,i+32768));return btoa(s)};
+const fromB64=t=>Uint8Array.from(atob(t),c=>c.charCodeAt(0));
+async function deflate(str){return new Uint8Array(await new Response(new Blob([str]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer())}
+async function inflate(u8){return new Response(new Blob([u8]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text()}
+async function packSubject(s){let nopics=0;
+  const items=s.items.map(({img,...it})=>{if(img){nopics++;if(it.type==='card'&&!it.def)it.def='(picture: ask for the subject file to see it)';if(it.type!=='card'&&!it.q)it.q='(picture question: ask for the subject file to see it)'}return it});
+  const json=JSON.stringify({app:'subject-study-guide',type:'subject',v:2,nopics,subject:{...s,items}});
+  if(typeof CompressionStream==='function')try{return 'SSGS2:'+toB64(await deflate(json))}catch(e){}
+  return 'SSGS1:'+b64e(json)}
+// Accepts a code on its own or inside a longer pasted message, or a subject file. Returns {subject, nopics}, {old:true} or null.
+async function decodeShare(m){if(m[1]==='2'){if(typeof DecompressionStream!=='function')return{old:true};return JSON.parse(await inflate(fromB64(m[2])))}return JSON.parse(b64d(m[2]))}
+async function parseShared(txt){txt=String(txt||'').trim();let o=null;
+  // Try the text as pasted first (so words after the code aren't glued on), then with any line breaks removed.
+  for(const t of [txt,txt.replace(/\s+/g,'')]){const m=t.match(/SSGS([12]):([A-Za-z0-9+/=]+)/i);
+    try{o=m?await decodeShare(m):t.startsWith('{')?JSON.parse(t):null}catch(e){o=null}if(o)break}
+  if(o&&o.old)return o;
+  if(!(o&&o.app==='subject-study-guide'&&o.type==='subject'))return null;const s=cleanSubject(o.subject);return s?{subject:s,nopics:+o.nopics||0}:null}
 // Photos are shrunk to at most 900 px and saved as JPEG, usually 40–120 KB each.
 function shrinkImage(file){return new Promise((res,rej)=>{if(!file||!/^image\//.test(file.type||'image/'))return rej(new Error('type'));
   const url=URL.createObjectURL(file),im=new Image();
@@ -2412,8 +2430,8 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 window.addEventListener('pagehide',()=>{if(T.active)saveActive()});
 window.addEventListener('beforeunload',e=>{if(T.active){saveActive();if(T.active.limit&&!updating){e.preventDefault();e.returnValue=''}}});
 /* ---------- My subjects panel (create, edit, share, import custom subjects) ---------- */
-const CM={key:'cm',screen:'list',sid:null,draft:null,msg:'',cls:'neutral',creating:false,importOpen:false,shareId:null,shareCode:'',delId:null,delItem:null};
-function openMgr(screen,sid){Object.assign(CM,{screen:screen||'list',sid:sid||null,draft:null,msg:'',creating:false,importOpen:false,shareId:null,shareCode:'',delId:null,delItem:null});
+const CM={key:'cm',screen:'list',sid:null,draft:null,msg:'',cls:'neutral',creating:false,importOpen:false,shareId:null,packed:'',showCode:false,delId:null,delItem:null};
+function openMgr(screen,sid){Object.assign(CM,{screen:screen||'list',sid:sid||null,draft:null,msg:'',creating:false,importOpen:false,shareId:null,packed:'',showCode:false,delId:null,delItem:null});
   $('cmgr').hidden=false;document.body.style.overflow='hidden';renderMgr()}
 function closeMgr(){$('cmgr').hidden=true;document.body.style.overflow='';CM.draft=null}
 function cmSay(m,cls){CM.msg=m;CM.cls=cls||'neutral'}
@@ -2441,10 +2459,12 @@ function mgrList(){const used=JSON.stringify(CUS).length/1e6;
     return `<div class="card"><div><h3 class="h3">${s.name}</h3><p class="count" style="margin:0">${qs.length} question${qs.length===1?'':'s'}${qs.length?` in ${tops} topic${tops===1?'':'s'}`:''} · ${cards} flashcard${cards===1?'':'s'}</p></div>
       <div class="actions"><button class="btn" type="button" data-cm="practice" data-id="${s.id}">Practice</button><button class="btn ghost" type="button" data-cm="edit" data-id="${s.id}">Edit</button><button class="btn ghost" type="button" data-cm="share" data-id="${s.id}">Share</button><button class="linkbtn" type="button" data-cm="del" data-id="${s.id}">Delete</button></div>
       ${CM.shareId===s.id?`<div class="fb neutral" style="display:flex;flex-direction:column;gap:10px;font-weight:400">
-        <span>Send this to anyone. They add it from <b>My subjects → Add a shared subject</b>. If you change the subject later, share it again and their copy updates without losing progress.</span>
-        <div class="actions"><button class="btn" type="button" data-cm="copycode" data-id="${s.id}">Copy share code</button><button class="btn ghost" type="button" data-cm="savefile" data-id="${s.id}">Save subject file</button></div>
-        ${CM.shareCode?`<textarea id="cmsharecode" class="codebox" readonly rows="3" aria-label="Share code">${CM.shareCode}</textarea>`:''}
-        ${s.items.some(i=>i.img)?'<span class="note">Pictures make the code long. If it won’t paste, send the file instead.</span>':''}</div>`:''}
+        <span>Send this to anyone. They paste it in <b>My subjects → Add a shared subject</b>. If you change the subject later, share it again and their copy updates without losing progress.</span>
+        ${CM.packed?`<span class="count">Share code ready: ${CM.packed.length.toLocaleString()} characters.</span>
+        <div class="actions">${navigator.share?`<button class="btn" type="button" data-cm="sendcode" data-id="${s.id}">Send…</button>`:''}<button class="btn${navigator.share?' ghost':''}" type="button" data-cm="copycode" data-id="${s.id}">Copy share code</button><button class="btn ghost" type="button" data-cm="savefile" data-id="${s.id}">Save subject file</button></div>`
+          :'<span class="count">Preparing the share code…</span>'}
+        ${CM.showCode&&CM.packed?`<textarea id="cmsharecode" class="codebox" readonly rows="3" aria-label="Share code">${CM.packed}</textarea>`:''}
+        ${s.items.some(i=>i.img)?'<span class="note">Pictures aren’t in the share code, because they’d make it far too long. To share the pictures too, use <b>Save subject file</b> and send the file.</span>':''}</div>`:''}
       ${CM.delId===s.id?`<div class="fb bad" style="display:flex;flex-direction:column;gap:10px;font-weight:400">Delete “${s.name}” and all ${s.items.length} of its questions and flashcards from this device? This can’t be undone.
         <div class="actions"><button class="btn" type="button" data-cm="delyes" data-id="${s.id}">Delete</button><button class="btn ghost" type="button" data-cm="delno">Cancel</button></div></div>`:''}</div>`}).join('')
     :'<div class="card"><p class="sub" style="margin:0">You haven’t made any subjects yet. Create one, or add one someone shared with you.</p></div>'}
@@ -2552,13 +2572,18 @@ $('cmgr').addEventListener('change',e=>{
     if(commitCustom(()=>{s.name=name;s.updated=Date.now()})){refreshSubjects();cmSay('Renamed.','good')}else cmSay(noSpace,'bad');renderMgr()}
   if(e.target.dataset.f==='img')onPicture(CM,$('cmbody'),e.target,renderMgr);
   if(e.target.id==='cmfile'){const f=e.target.files&&e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>importShared(r.result);r.onerror=()=>{cmSay('Couldn’t read that file.','bad');renderMgr()};r.readAsText(f)}});
-function importShared(txt){if(/^\s*SSG1:/i.test(txt)){cmSay('That’s a backup code, not a subject. Load it from Progress → Backup instead.','bad');return renderMgr()}
-  const s=parseShared(txt);if(!s){cmSay('That isn’t a shared subject. Check that you copied the whole code or picked the right file.','bad');return renderMgr()}
-  const prev=findSub(s.id),prevUpdated=prev&&prev.updated;
+async function importShared(txt){if(/^\s*SSG1:/i.test(txt)){cmSay('That’s a backup code, not a subject. Load it from Progress → Backup instead.','bad');return renderMgr()}
+  const p=await parseShared(txt);
+  if(p&&p.old){cmSay('This browser is too old to open this share code. Update the phone or browser, or ask for the subject file instead.','bad');return renderMgr()}
+  if(!p){cmSay('That isn’t a shared subject. Check that you copied the whole code or picked the right file.','bad');return renderMgr()}
+  const s=p.subject,prev=findSub(s.id),prevUpdated=prev&&prev.updated;
   if(prev&&s.updated<prevUpdated){cmSay(`You already have a newer copy of “${s.name}”, so nothing changed.`);return renderMgr()}
   if(!commitCustom(()=>mergeCustom([s]))){cmSay(noSpace,'bad');return renderMgr()}
   refreshSubjects();CM.importOpen=false;const n=s.items.length;
-  cmSay(prev?`Updated your copy of “${s.name}”. Your progress on it is kept.`:`Added “${s.name}” (${n} question${n===1?'':'s'} and flashcard${n===1?'':'s'}). Pick it from the subject menu to practice.`,'good');
+  // Pictures this device already had were kept by mergeCustom; say so only if some are still missing.
+  const lost=Math.max(0,p.nopics-findSub(s.id).items.filter(it=>it.img).length);
+  const pics=lost?` The code didn’t include ${lost===1?'a picture':lost+' pictures'}. Ask for the subject file if you need ${lost===1?'it':'them'}.`:'';
+  cmSay((prev?`Updated your copy of “${s.name}”. Your progress on it is kept.`:`Added “${s.name}” (${n} question${n===1?'':'s'} and flashcard${n===1?'':'s'}). Pick it from the subject menu to practice.`)+pics,'good');
   renderMgr()}
 $('cmgr').addEventListener('click',e=>{const b=e.target.closest('[data-cm]');if(!b)return;const a=b.dataset.cm,id=b.dataset.id,root=$('cmbody');
   if(CM.screen==='item')syncDraft(CM,root);
@@ -2574,9 +2599,13 @@ $('cmgr').addEventListener('click',e=>{const b=e.target.closest('[data-cm]');if(
     case 'pickfile':return $('cmfile').click();
     case 'practice':closeMgr();setView('practice');setSubj(id);window.scrollTo({top:0});return;
     case 'edit':Object.assign(CM,{screen:'edit',sid:id,msg:'',delItem:null});break;
-    case 'share':CM.shareId=CM.shareId===id?null:id;CM.shareCode='';CM.delId=null;CM.msg='';break;
-    case 'copycode':{const code=shareCode(findSub(id));
-      copyText(code,()=>{CM.shareCode='';cmSay('Share code copied. Send it in a message or email.','good');renderMgr()},()=>{CM.shareCode=code;cmSay('Copy didn’t work here. Select all of the code below and copy it yourself.');renderMgr()});return}
+    case 'share':{CM.shareId=CM.shareId===id?null:id;Object.assign(CM,{packed:'',showCode:false,delId:null,msg:''});
+      // The code is prepared as soon as Share opens, so Copy and Send run straight from the tap (phones require that).
+      if(CM.shareId)packSubject(findSub(id)).then(code=>{if(CM.shareId===id){CM.packed=code;renderMgr()}});break}
+    case 'copycode':{const code=CM.packed;if(!code)return;
+      copyText(code,()=>{CM.showCode=false;cmSay('Share code copied. Paste it in a message or email.','good');renderMgr()},()=>{CM.showCode=true;cmSay('Copy didn’t work here. Select all of the code below and copy it yourself.');renderMgr()});return}
+    case 'sendcode':{const code=CM.packed,sub=findSub(id);if(!code||!navigator.share)return;
+      navigator.share({title:`${sub.name} (Subject Study Guide)`,text:`Here’s my “${sub.name}” subject for Subject Study Guide. Copy this whole message, then paste it in My subjects → Add a shared subject.\n\n${code}`}).catch(()=>{});return}
     case 'savefile':{const sub=findSub(id),ok=downloadFile(`subject-${sub.name.replace(/[^\w-]+/g,'-')}.json`,JSON.stringify({app:'subject-study-guide',type:'subject',v:1,subject:sub}));
       cmSay(ok?'Subject file saved. Send it to anyone, and they can add it with Choose a subject file.':'Saving a file didn’t work here. Use Copy share code instead.',ok?'good':'neutral');break}
     case 'del':CM.delId=CM.delId===id?null:id;CM.shareId=null;CM.msg='';break;
