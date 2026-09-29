@@ -19,18 +19,20 @@ import { BACK, BRIDGE, SITE_URL, TABS, goTo, themeScript } from './bridge';
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function App() {
-  const dark = useColorScheme() === 'dark';
+  const phoneDark = useColorScheme() === 'dark';
+  const [pref, setPref] = useState('auto');  // the site's Theme menu: auto / light / dark
+  const dark = pref === 'dark' || (pref === 'auto' && phoneDark);
   return (
     <SafeAreaProvider>
       <PaperProvider theme={dark ? darkTheme : lightTheme}>
         <StatusBar style={dark ? 'light' : 'dark'} />
-        <Main dark={dark} />
+        <Main dark={dark} setPref={setPref} />
       </PaperProvider>
     </SafeAreaProvider>
   );
 }
 
-function Main({ dark }) {
+function Main({ dark, setPref }) {
   const theme = useTheme();
   const web = useRef(null);
   const [index, setIndex] = useState(0);
@@ -84,6 +86,9 @@ function Main({ dark }) {
       }
       case 'subject':
         setAddTab(!!msg.add);
+        break;
+      case 'theme':
+        setPref(['light', 'dark'].includes(msg.pref) ? msg.pref : 'auto');
         break;
       case 'menu':
         setMenuOpen(!!msg.open);

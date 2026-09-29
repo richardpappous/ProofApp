@@ -10,6 +10,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#f5f8fc" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0e1422" media="(prefers-color-scheme: dark)">
+<script>/* apply a chosen Light/Dark theme before the page draws (Auto follows the device) */
+try{var ssgT=localStorage.getItem('ssg-theme');if(ssgT==='light'||ssgT==='dark')document.documentElement.setAttribute('data-theme',ssgT)}catch(e){}</script>
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=3">
 <link rel="icon" type="image/png" href="apple-touch-icon.png?v=3">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -249,6 +251,8 @@ details.fold[open]>summary::after{transform:rotate(-135deg);margin-bottom:-4px}
 details.fold[open]{padding-bottom:20px}
 .foldbody{display:flex;flex-direction:column;gap:14px}
 .foldbody>div{display:flex;flex-direction:column;gap:14px}
+#adbulk .foldbody>.seg{display:inline-flex;flex-direction:row;align-self:flex-start;gap:2px}
+#adbulk .foldbody>.actions{flex-direction:row}
 .week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;align-items:end}
 .wd{display:flex;flex-direction:column;align-items:center;gap:4px}
 .wbar{width:100%;max-width:36px;height:72px;background:var(--accent-soft);border-radius:6px;display:flex;align-items:flex-end;overflow:hidden}
@@ -408,6 +412,7 @@ details.fold[open]{padding-bottom:20px}
     <div class="actions"><button class="btn" id="fbsend" type="submit">Submit feedback</button><button class="btn ghost" id="fbcancel" type="button">Cancel</button></div>
   </form>
 </div>
+<div class="sheet" id="frsheet" role="dialog" aria-modal="true" aria-labelledby="frtitle" hidden><div class="card sheetcard" id="frbody"></div></div>
 <div class="panel" id="cmgr" role="dialog" aria-modal="true" aria-labelledby="cmtitle" hidden><div class="pwrap" id="cmbody"></div></div>
 <div class="welcome" id="welcome" role="dialog" aria-modal="true" aria-labelledby="wtitle" hidden>
   <div class="wcard">
@@ -1718,6 +1723,34 @@ function grade(p,raw){
 const answerText=p=>p.show!==undefined?p.show:N(p.ans);
 // Custom-subject answers: capitals, curly quotes, extra spaces and a final period don't matter.
 const normAns=s=>String(s).normalize('NFKC').toLowerCase().replace(/[‘’]/g,"'").replace(/[“”]/g,'"').replace(/\s+/g,' ').trim().replace(/[.!?]+$/,'').trim();
+// Mistake-specific feedback: when an answer is wrong, look for a common slip and name it ('' if none found).
+// Order matters: a mixed-up operation is the most useful thing to say, then sign, decimal point, upside down,
+// rounding, off by one, and finally "very close".
+function mistakeHint(p,raw){try{
+  if(p.kind==='mc'||p.kind==='poly')return '';
+  if(p.kind==='cx'){const v=tryEval(normalize(raw)),[a,b]=p.ansC;if(!v)return '';const eq=(x,y)=>Math.abs(x-y)<1e-6;
+    if(b&&eq(v.re,a)&&eq(v.im,-b))return 'The real part is right. Check the sign of the i term.';
+    if(a&&eq(v.re,-a)&&eq(v.im,b))return 'The i term is right. Check the sign of the real part.';
+    if(a!==b&&eq(v.re,b)&&eq(v.im,a))return 'Looks like the real and imaginary parts are swapped.';return ''}
+  if(p.kind==='rem'){const m=normalize(raw).match(/^(\d+)r(\d+)$/);if(!m)return '';
+    if(+m[1]===p.ansR[0])return 'The quotient is right. Recheck the remainder.';if(+m[2]===p.ansR[1])return 'The remainder is right. Recheck the quotient.';return ''}
+  if(p.kind==='time'){const m=normalize(raw).replace(/(a\.?m\.?|p\.?m\.?)$/,'').match(/^(\d{1,2}):(\d{2})$/);if(!m)return '';const t=p.ansT%720;
+    if(+m[2]===t%60)return 'The minutes are right. Check the hour.';if((+m[1])%12===Math.floor(t/60))return 'The hour is right. Check the minutes.';return ''}
+  let ans=p.ans;if(p.kind==='text'){if(!p.numeric)return '';ans=readNumber(p.ansList[0])}
+  const v=readNumber(raw);if(isNaN(v)||isNaN(ans)||!isFinite(ans))return '';
+  const near=(x,y)=>Math.abs(x-y)<=1e-6*Math.max(1,Math.abs(y));
+  // Did they combine two numbers from the problem with the wrong operation?
+  const nums=[...new Set((plain((p.story||'')+' '+(p.q||'')).replace(/−/g,'-').match(/-?\d[\d,]*(?:\.\d+)?/g)||[]).map(s=>+s.replace(/,/g,'')))].filter(isFinite).slice(0,8);
+  const ops=[['added','adding',(a,b)=>a+b],['subtracted','subtracting',(a,b)=>a-b],['multiplied','multiplying',(a,b)=>a*b],['divided','dividing',(a,b)=>b?a/b:NaN]];
+  for(const a of nums)for(const b of nums){if(a===b)continue;const did=ops.find(o=>near(o[2](a,b),v)),should=ops.find(o=>near(o[2](a,b),ans));
+    if(did&&should&&did!==should)return `Looks like you ${did[0]} instead of ${should[1]}.`}
+  if(ans!==0&&near(v,-ans))return 'Right size, wrong sign. Check whether the answer should be positive or negative.';
+  if(ans!==0)for(const k of [10,100,1000])if(near(v,ans*k)||near(v,ans/k))return 'The digits look right, but the decimal point (or place value) is off.';
+  if(ans!==0&&Math.abs(ans)!==1&&near(v*ans,1))return 'Looks like it’s upside down. Check which number goes on top.';
+  if(p.tol&&p.tol>1e-6&&Math.abs(v-ans)<=Math.max(10*p.tol,0.02*Math.abs(ans)))return 'Very close. Check your rounding, and round only at the very end.';
+  if(Number.isInteger(ans)&&Math.abs(v-ans)===1)return 'Off by one. Recheck your counting or your last step.';
+  if(Math.abs(v-ans)<=0.02*Math.abs(ans))return 'Very close. Recheck your arithmetic.';
+  return ''}catch(e){return ''}}
 // What the student answered, as text (multiple choice stores the choice number).
 const rawText=(p,raw)=>p.kind==='mc'?(p.choices[+raw]!==undefined?esc(p.choices[+raw]):''):esc(raw);
 const placeholder=p=>p.kind==='poly'?'(x + 2)(x − 5)':p.kind==='cx'?'like 3 − 4i':p.kind==='time'?'like 3:45':p.kind==='rem'?'like 17 R 2':'Your answer';
@@ -1933,7 +1966,7 @@ function render(){
    ${keysHTML(c,'ain')}
    <div id="fb"></div>
    <div id="hints"></div>
-   <div class="actions"><button class="btn ghost" id="bhint" type="button">Hint</button><button class="btn ghost" id="bsteps" type="button">Show answer and steps</button><button class="btn ghost" id="bnext" type="button">New problem</button></div>
+   <div class="actions"><button class="btn ghost" id="bhint" type="button">Hint</button><button class="btn ghost" id="bsteps" type="button">Show answer and steps</button><button class="btn ghost" id="bnext" type="button">New problem</button>${FORM[subj].length?'<button class="btn ghost" id="bform" type="button">Formulas</button>':''}</div>
    <div id="more"></div>`;
   const H=c.steps.length>1?c.steps.slice(0,-1):c.tip?[c.tip]:[];
   if(!H.length)$('bhint').hidden=true;
@@ -1947,13 +1980,15 @@ function render(){
   $('af').addEventListener('submit',e=>{e.preventDefault();if(solved){nextFromCheck();return}check()});
   $('bsteps').onclick=()=>{if(!answered){answered=true;if(cur.review)reviewResult(cur.review,false);else addReview(subj+'|'+cur.name,cur.level);Store.changed();refreshInfo()}$('more').innerHTML=stepsHTML(cur,true)};
   $('bnext').onclick=()=>{if(cur.review&&!answered){postponeReview(cur.review);Store.changed()}newProblem()};
+  if($('bform'))$('bform').onclick=()=>openFormulaSheet(cur.name);
 }
 function check(){
   const g=grade(cur,$('ain').value),fb=$('fb');
   if(BADMSG[g]){fb.innerHTML=`<div class="fb neutral">${BADMSG[g]}</div>`;return}
   const ok=g==='ok';
   if(!answered){answered=true;const res=record(subj,cur.name,ok,cur.level);if(cur.review)reviewResult(cur.review,ok);else if(!ok)addReview(subj+'|'+cur.name,cur.level);Store.changed();announce(res);refreshInfo()}
-  fb.innerHTML=ok?`<div class="fb good">Correct: ${answerText(cur)}</div>`:`<div class="fb bad">Not quite. Try again or open the steps.</div>`;
+  const why=ok?'':mistakeHint(cur,$('ain').value);
+  fb.innerHTML=ok?`<div class="fb good">Correct: ${answerText(cur)}</div>`:`<div class="fb bad">Not quite. ${why?`<span style="font-weight:400">${why}</span> `:''}Try again or open the steps.</div>`;
   if(cur.kind==='mc'){const b=$('pcard').querySelector(`.choice[data-ci="${$('ain').value}"]`);if(b){b.classList.add(ok?'right':'wrong');if(!ok)b.disabled=true}
     if(ok)$('pcard').querySelectorAll('.choice').forEach(x=>x.disabled=true)}
   if(ok){$('more').innerHTML=stepsHTML(cur,false);solved=true;const inp=$('ain');inp.readOnly=true;inp.classList.add('locked');$('pcard').classList.add('solved');inp.setAttribute('aria-label','Your answer (correct)');
@@ -1971,6 +2006,21 @@ function renderTerms(){
   tl.innerHTML=list.map(t=>tl.classList.contains('quiz')?flipCardHTML(t,''):`<div class="term" tabindex="0"><h3>${t[0]}</h3><p class="def">${t[1]}</p>${t[2]?`<p class="ex">${t[2]}</p>`:''}</div>`).join('')||
     (TERMS[subj].length?'<p class="note">No terms match that search.</p>':'<p class="note">No flashcards yet. Add some from My subjects in the name menu.</p>');
 }
+/* ---------- formula sheet inside a problem (Formulas button on the practice card) ---------- */
+// Sections whose names or formulas share words with the problem's topic open first; the rest stay folded.
+const FSTOP=new Set(['and','the','of','a','an','to','with','from','word','problems','problem','for','in','on','by','number','numbers','law','laws','theorem','rule','rules','equation','equations','formula','formulas']);
+const fWords=s=>plain(s).toLowerCase().split(/[^a-z²³]+/).filter(w=>w.length>2&&!FSTOP.has(w)).map(w=>w.replace(/(ies|es|s)$/,m=>m==='ies'?'y':''));
+function openFormulaSheet(topicName){const groups=FORM[subj];if(!groups.length)return;const want=fWords(topicName);
+  const scored=groups.map((g,i)=>{const have=new Set(fWords(g[0]+' '+g[1].map(r=>r.join(' ')).join(' ')));return{g,i,score:want.filter(w=>have.has(w)).length}});
+  const hits=scored.filter(x=>x.score).sort((a,b)=>b.score-a.score||a.i-b.i),rest=scored.filter(x=>!x.score),order=[...hits,...rest];
+  $('frbody').innerHTML=`<div class="row" style="flex-wrap:nowrap"><h2 id="frtitle">Formulas</h2><button class="xbtn" type="button" data-fr="close" aria-label="Close">✕</button></div>
+    <p class="note" style="margin:0">${subjName(subj)}${hits.length?` · sections for <b>${esc(topicName)}</b> are open`:''}</p>
+    <div style="display:flex;flex-direction:column;gap:10px">${order.map((x,k)=>`<details class="fgroup"${x.score||(!hits.length&&k===0)?' open':''}><summary>${x.g[0]}</summary><div class="ftable">${x.g[1].map(r=>`<div>${r[0]}</div><div>${r[1]}</div>`).join('')}</div></details>`).join('')}</div>`;
+  $('frsheet').hidden=false;document.body.style.overflow='hidden';$('frbody').scrollTop=0;$('frbody').querySelector('[data-fr="close"]').focus()}
+function closeFormulaSheet(){$('frsheet').hidden=true;document.body.style.overflow='';const b=$('bform');if(b)b.focus({preventScroll:true})}
+$('frsheet').addEventListener('click',e=>{if(e.target.id==='frsheet'||e.target.closest('[data-fr="close"]'))closeFormulaSheet()});
+$('frsheet').addEventListener('keydown',e=>{if(e.key==='Escape')closeFormulaSheet()});
+
 /* ---------- flashcards: flip cards, Study flashcards, Flashcard test ---------- */
 // A card is a TERMS entry [term, definition, example]. The front shows the term; tapping flips it to the back.
 function flipCardHTML(t,cls){return `<div class="flip ${cls}" tabindex="0" role="button" aria-pressed="false" aria-label="Flashcard. Tap to reveal the answer.">
@@ -2093,6 +2143,13 @@ function weekHTML(){const G=Store.data.goal||0,arr=[];
   for(let off=6;off>=0;off--){const d=new Date();d.setDate(d.getDate()-off);const n=Store.data.days[dayKey(off)]||0;arr.push({n,lab:off===0?'Today':d.toLocaleDateString(undefined,{weekday:'short'}),met:G&&n>=G})}
   const mx=Math.max(G||1,...arr.map(a=>a.n));
   return `<div class="week" role="img" aria-label="Problems solved each of the last 7 days">${arr.map(a=>`<div class="wd"><span class="wn">${a.n||''}</span><div class="wbar"><span class="${a.met?'met':''}" style="height:${Math.round(100*a.n/mx)}%"></span></div><span class="wl">${a.lab}</span></div>`).join('')}</div>`}
+/* theme: Auto (follows the device), Light or Dark (per device, key ssg-theme) */
+const THEME_LABEL={auto:'Auto',light:'Light',dark:'Dark'},THEME_NEXT={auto:'light',light:'dark',dark:'auto'};
+let themePref='auto';try{const t=localStorage.getItem('ssg-theme');if(THEME_LABEL[t])themePref=t}catch(e){}
+function applyTheme(){const r=document.documentElement;if(themePref==='auto')r.removeAttribute('data-theme');else r.setAttribute('data-theme',themePref);
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m=>{m.content=themePref==='auto'?(m.media.includes('dark')?'#0e1422':'#f5f8fc'):themePref==='dark'?'#0e1422':'#f5f8fc'})}
+function setTheme(t){themePref=t;try{localStorage.setItem('ssg-theme',t)}catch(e){}applyTheme()}
+applyTheme();
 /* tutor tips (per device) */
 let tipsOn=true;try{tipsOn=localStorage.getItem('ssg-tips')!=='0'}catch(e){}
 function applyTips(){document.body.classList.toggle('notips',!tipsOn)}
@@ -2224,7 +2281,7 @@ function renderRunner(el){const A=T.active,old=$('tin');if(old&&old.dataset.i!==
 }
 function finishTest(reason){const A=T.active;if(!A)return;clearInterval(T.clock);if(typeof reason!=='string')reason='';
   const secs=A.limit?Math.min(A.limit*60,Math.round((Date.now()-A.start)/1000)):Math.round((Date.now()-A.start)/1000),byTopic={},agg={mastered:[],goalHit:false};let score=0;
-  A.items.forEach(it=>{const g=grade(it.p,it.raw);it.res=g==='ok'?'ok':it.raw.trim()?'wrong':'skip';if(g==='notfactored')it.note='Equal to the original, but not factored.';
+  A.items.forEach(it=>{const g=grade(it.p,it.raw);it.res=g==='ok'?'ok':it.raw.trim()?'wrong':'skip';if(g==='notfactored')it.note='Equal to the original, but not factored.';else if(it.res==='wrong'){const h=mistakeHint(it.p,it.raw);if(h)it.note=h}
     const ok=it.res==='ok';if(ok)score++;const rs=record(it.p.subj,it.p.name,ok,it.p.level,it.res!=='skip');agg.mastered.push(...rs.mastered);if(rs.goalHit)agg.goalHit=true;if(!ok)addReview(it.key,it.p.level);const b=byTopic[it.key]||(byTopic[it.key]=[0,0]);if(ok)b[0]++;b[1]++});
   const summary={id:'t'+Date.now().toString(36),ts:Date.now(),name:A.name,kind:A.kind,level:A.level,score,total:A.items.length,secs,topics:byTopic};
   Store.data.tests.unshift(summary);Store.data.tests=Store.data.tests.slice(0,60);Store.changed();
@@ -2324,7 +2381,26 @@ function resumeCardHTML(){const s0=Store.data.activeTest;if(!s0)return '';const 
     <p class="savenote" style="margin:6px 0 0">✓ Your answers were saved when you left.</p></div>
     ${T.pendingStart?`<div class="fb bad" style="display:flex;flex-direction:column;gap:10px;font-weight:400">Starting “${esc(T.pendingStart[0])}” will discard this unfinished test and its saved answers.<div class="actions"><button class="btn" id="treplaceyes" type="button">Discard it and start</button><button class="btn ghost" id="treplaceno" type="button">Keep it</button></div></div>`:T.confirmDiscard?`<div class="fb bad" style="display:flex;flex-direction:column;gap:10px;font-weight:400">Discard this test? Your saved answers will be deleted and nothing is graded.<div class="actions"><button class="btn" id="tdiscyes" type="button">Discard</button><button class="btn ghost" id="tdiscno" type="button">Keep it</button></div></div>`
       :`<div class="actions"><button class="btn" id="tresume" type="button">${s0.limit&&Date.now()>=s0.deadline?'See results':'Resume'}</button><button class="linkbtn" id="tdiscard" type="button">Discard</button></div>`}</div>`}
-const PG={hist:false,bk:false};
+const PG={hist:false,bk:false,reportMsg:'',reportCls:'neutral',reportText:''};
+/* progress report: a plain-text summary across every subject, to text to a parent, student or tutor */
+function progressReport(){const D=Store.data,L=[],name=Store.mode==='cloud'?'My progress':Store.local.current;
+  L.push(`Proof progress report: ${name}`,new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'}),'');
+  const G=D.goal,n=D.days[dayKey(0)]||0,st=streak();let week=0;for(let o=0;o<7;o++)week+=D.days[dayKey(o)]||0;
+  L.push(`Today: ${n} problem${n===1?'':'s'}${G?` (daily goal ${G})`:''}`,`This week: ${week} problem${week===1?'':'s'}`,`Streak: ${st} day${st===1?'':'s'} (best ${bestStreak()})`);
+  let any=false;
+  for(const s of SUBJ){const all=allKeys(s.id),ks=all.map(k=>({k,...level(k)})).filter(x=>x.t);if(!ks.length)continue;any=true;
+    const m=ks.filter(x=>x.cls==='m'),weak=ks.filter(x=>x.cls==='w'||x.cls==='g').sort((a,b)=>a.pct-b.pct),tot=ks.reduce((a,x)=>a+x.t,0),acc=Math.round(ks.reduce((a,x)=>a+x.pct,0)/ks.length);
+    L.push('',`${s.name}: ${m.length} of ${all.length} topics mastered · ${acc}% recent accuracy · ${tot} answered`);
+    if(m.length)L.push(`  Mastered: ${m.map(x=>splitKey(x.k)[1]).join(', ')}`);
+    if(weak.length)L.push(`  To work on: ${weak.slice(0,5).map(x=>`${splitKey(x.k)[1]} (${x.pct}%)`).join(', ')}`)}
+  if(!any)L.push('','No problems answered yet.');
+  const tests=D.tests.slice(0,5);
+  if(tests.length){L.push('','Recent tests:');tests.forEach(t=>L.push(`  ${t.name}: ${t.score}/${t.total} (${Math.round(100*t.score/t.total)}%), ${new Date(t.ts).toLocaleDateString(undefined,{month:'short',day:'numeric'})}`))}
+  return L.join('\n')}
+function sendReport(){const text=progressReport();Object.assign(PG,{reportMsg:'',reportText:''});
+  if(navigator.share){navigator.share({title:'Proof progress report',text}).catch(()=>{});return}
+  copyText(text,()=>{Object.assign(PG,{reportMsg:'Progress report copied. Paste it into a message or email.',reportCls:'good'});renderProgress()},
+    ()=>{Object.assign(PG,{reportMsg:'Copy didn’t work here. Select the report below and copy it yourself.',reportCls:'neutral',reportText:text});renderProgress()})}
 function renderProgress(){const el=$('progress'),keys=allKeys(subj),L=keys.map(k=>({k,...level(k)}));
   const started=L.filter(x=>x.t),mastered=L.filter(x=>x.cls==='m').length,answeredN=started.reduce((a,x)=>a+x.t,0);
   const acc=started.length?Math.round(started.reduce((a,x)=>a+x.pct,0)/started.length):null;
@@ -2337,6 +2413,9 @@ function renderProgress(){const el=$('progress'),keys=allKeys(subj),L=keys.map(k
     <div class="stats"><div class="stat"><b>${mastered} / ${keys.length}</b><span>topics mastered</span></div>
       <div class="stat"><b>${acc===null?'–':acc+'%'}</b><span>recent accuracy</span></div>
       <div class="stat"><b>${answeredN}</b><span>problems answered</span></div></div>
+    <div class="actions"><button class="btn ghost" id="pgreport" type="button">Send progress report</button></div>
+    ${PG.reportMsg?`<div class="fb ${PG.reportCls}">${PG.reportMsg}</div>`:''}
+    ${PG.reportText?`<textarea id="pgreporttext" class="codebox" readonly rows="8" aria-label="Progress report">${esc(PG.reportText)}</textarea>`:''}
     ${sched?`<div class="row"><p class="sub" style="margin:0">${due?`<b>${due} review${due>1?'s':''} due now</b> · `:''}${sched} missed problem type${sched>1?'s':''} scheduled to come back</p>${due?'<button class="btn ghost" id="pgrev" type="button">Do reviews</button>':''}</div>`:''}</div>
   <div class="card" id="goalcard"><div class="row"><h3 class="h3" style="margin:0">Daily goal</h3>
       <label class="field" for="goalsel" style="flex-direction:row;align-items:center;gap:8px">Problems per day<select id="goalsel">${[0,5,10,15,20,30,50].map(v=>`<option value="${v}"${v===G?' selected':''}>${v||'Off'}</option>`).join('')}</select></label></div>
@@ -2357,6 +2436,7 @@ function renderProgress(){const el=$('progress'),keys=allKeys(subj),L=keys.map(k
       <div class="actions"><button class="btn" id="resetyes" type="button">Erase progress</button><button class="btn ghost" id="resetno" type="button">Cancel</button></div></div>`
       :`<p class="note" style="margin:0">Erases this student’s progress, history and saved tests. Save a backup first if you might want it back.</p><div class="actions"><button class="btn ghost" id="reset" type="button">Reset progress</button></div>`}</div></details>`;
   el.querySelectorAll('[data-prac]').forEach(b=>b.onclick=()=>goPractice(subj,b.dataset.prac));
+  $('pgreport').onclick=sendReport;if($('pgreporttext'))$('pgreporttext').onfocus=e=>e.target.select();
   $('histfold').ontoggle=e=>{PG.hist=e.target.open};$('bkfold').ontoggle=e=>{PG.bk=e.target.open};
   $('goalsel').onchange=e=>{Store.data.goal=+e.target.value;Store.changed();renderGoal();renderProgress()};
   if($('pgrev'))$('pgrev').onclick=()=>{setView('practice');topic='__smart';$('topic').value=topic;saveUI();cur=null;newProblem();window.scrollTo({top:0})};
@@ -2386,11 +2466,13 @@ function renderMenu(){const m=$('whomenu'),cloud=Store.mode==='cloud',cur0=Store
     <button class="mi${view==='progress'?' cur':''}" role="menuitem" type="button" data-act="progress"><span>Progress</span><span class="count">Topics, goal & history</span></button>
     <div class="msep"></div>
     <button class="mi" role="menuitemcheckbox" aria-checked="${tipsOn}" type="button" data-act="tips"><span>Tutor tips</span><span class="count">${tipsOn?'On':'Off'}</span></button>
+    <button class="mi" role="menuitem" type="button" data-act="theme" aria-label="Theme: ${THEME_LABEL[themePref]}. Tap to change."><span>Theme</span><span class="count">${THEME_LABEL[themePref]}</span></button>
     <button class="mi" role="menuitem" type="button" data-act="subjects"><span>My subjects</span><span class="count">Create & share</span></button>
     ${FEEDBACK_KEY?`<button class="mi" role="menuitem" type="button" data-act="feedback"><span>Send feedback</span><span class="count">Ideas & mistakes</span></button>`:''}`;
   m.querySelectorAll('[data-prof]').forEach(b=>b.onclick=()=>{closeMenu();if(b.dataset.prof!==Store.local.current)Store.switchProfile(b.dataset.prof)});
   m.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{const a=b.dataset.act;
     if(a==='tips'){setTips(!tipsOn);renderMenu();const t=$('whomenu').querySelector('[data-act="tips"]');if(t)t.focus();return}
+    if(a==='theme'){setTheme(THEME_NEXT[themePref]);renderMenu();const t=$('whomenu').querySelector('[data-act="theme"]');if(t)t.focus();return}
     if(a==='feedback'){closeMenu();openFeedback();return}
     if(a==='subjects'){closeMenu();openMgr();return}
     if(a==='remove'){WM.mode='remove';WM.msg='';renderMenu();$('mremno').focus();return}
@@ -2560,6 +2642,7 @@ function focusNewWrong(S,root){if(S.focusWrong==null)return;const x=root.querySe
 function appBack(){  // phone back button: close the top-most panel. Returns true if something closed.
   if(!$('cmgr').hidden){if(CM.screen==='item'){CM.screen='edit';CM.draft=null;CM.msg=''}else if(CM.screen==='edit'){CM.screen='list';CM.msg=''}else{closeMgr();return true}renderMgr();return true}
   if(!$('fbsheet').hidden){closeFeedback();return true}
+  if(!$('frsheet').hidden){closeFormulaSheet();return true}
   if(WM.open){closeMenu();return true}
   if(FC.mode&&view==='terms'){fcExit();return true}
   return false}
@@ -2626,20 +2709,58 @@ $('cmgr').addEventListener('click',e=>{const b=e.target.closest('[data-cm]');if(
   renderMgr()});
 
 /* ---------- Add tab (takes the place of Formulas on a custom subject) ---------- */
-const AD={key:'ad',sid:null,draft:null,msg:'',cls:'neutral',delItem:null};
+const AD={key:'ad',sid:null,draft:null,msg:'',cls:'neutral',delItem:null,bulk:{kind:'card',text:'',topic:'',open:false,msg:'',cls:'neutral'}};
+// "Add many at once": one item per line.
+//   Flashcards: term, then a tab, " - " (or – —), ":" or "=", then the definition. A copied Quizlet set is term<TAB>definition.
+//   Questions: question | correct answer | wrong answers (optional; any makes it multiple choice). A tab also separates parts.
+const BULK_MAX=500;
+function parseBulk(kind,text,topic){const items=[],bad=[];
+  text.split(/\r?\n/).forEach((line,i)=>{const l=line.trim();if(!l)return;
+    if(items.length>=BULK_MAX)return bad.push(i+1);
+    if(kind==='card'){let m=null;for(const re of [/^([^\t]+)\t+(.+)$/,/^(.+?)\s+[-–—]\s+(.+)$/,/^(.+?)\s*[:=]\s*(.+)$/]){m=l.match(re);if(m)break}
+      const it=m&&cleanItem({type:'card',term:m[1],def:m[2]});it?items.push(it):bad.push(i+1);return}
+    const parts=l.split(/\s*\|\s*|\t+/).map(x=>x.trim()).filter(Boolean);if(parts.length<2)return bad.push(i+1);
+    const [q,ans,...w]=parts,wrong=w.filter(x=>normAns(x)!==normAns(ans)).slice(0,5);
+    const it=cleanItem(wrong.length?{type:'mc',topic,q,choices:[ans,...wrong],correct:0}:{type:'text',topic,q,ans,alt:[]});it?items.push(it):bad.push(i+1)});
+  return{items,bad}}
+function bulkSummary(){const b=AD.bulk,r=parseBulk(b.kind,b.text,b.topic),noun=b.kind==='card'?'flashcard':'question',n=r.items.length;
+  const badTxt=r.bad.length?` · ${r.bad.length} line${r.bad.length===1?'':'s'} couldn’t be read (line${r.bad.length===1?'':'s'} ${r.bad.slice(0,6).join(', ')}${r.bad.length>6?', …':''})`:'';
+  return{r,label:n?`Add ${n} ${noun}${n===1?'':'s'}`:`Add ${noun}s`,text:b.text.trim()?`Found ${n} ${noun}${n===1?'':'s'}${badTxt}.`:''}}
 function syncAddTab(){const add=isCustom(subj),b=document.querySelector('.tabbar [data-view="formulas"]');
   $('v-formulas').textContent=add?'Add':'Formulas';b.querySelector('.lbl').textContent=add?'Add':'Formulas';
   b.querySelector('svg').innerHTML=add?'<path d="M12 5v14M5 12h14"/>':'<path d="M18 5H6l6 7-6 7h12"/>'}
 function renderAddTab(){const el=$('formulas'),s=findSub(subj);
-  if(AD.sid!==subj||!AD.draft)Object.assign(AD,{sid:subj,draft:blankDraft('q'),msg:'',delItem:null});
+  if(AD.sid!==subj||!AD.draft)Object.assign(AD,{sid:subj,draft:blankDraft('q'),msg:'',delItem:null,bulk:{kind:'card',text:'',topic:'',open:false,msg:'',cls:'neutral'}});
   const editing=s.items.some(i=>i.id===AD.draft.id),card=AD.draft.kind==='card';
   el.innerHTML=`<div class="row"><h2 class="h2">${editing?`Edit ${card?'flashcard':'question'}`:`Add to ${s.name}`}</h2>${editing?'<button class="linkbtn" type="button" data-cm="adcancel">Cancel editing</button>':''}</div>
     <div class="card" id="adform">${itemFormHTML(AD)}
       <div class="actions"><button class="btn" type="button" data-cm="adsave">${editing?'Save changes':card?'Add flashcard':'Add question'}</button></div></div>
+    ${editing?'':bulkHTML()}
     ${itemListHTML(AD)}
     <p class="note">Rename, share or delete this subject from <b>My subjects</b> in the name menu.</p>`}
+function bulkHTML(){const b=AD.bulk,card=b.kind==='card',sum=bulkSummary();
+  return `<details class="fold" id="adbulk"${b.open?' open':''}><summary>Add many at once <span class="count">paste a list</span></summary><div class="foldbody">
+    <div class="seg" role="group" aria-label="What to paste"><button type="button" data-cm="bulkkind" data-kind="card" aria-pressed="${card}">Flashcards</button><button type="button" data-cm="bulkkind" data-kind="q" aria-pressed="${!card}">Questions</button></div>
+    <p class="note" style="margin:0">${card?'One flashcard per line: the term, then a dash, colon or tab, then the definition. A set copied from Quizlet works too.<br>Example: <b>Osmosis - water moving across a membrane</b>'
+      :'One question per line, with the parts separated by <b>|</b>: question | correct answer | wrong answers. With wrong answers it’s multiple choice; without them it’s open-ended.<br>Example: <b>Capital of Texas? | Austin | Dallas | Houston</b>'}</p>
+    ${card?'':`<label class="field">Topic for these questions<input type="text" data-b="topic" maxlength="40" value="${esc(b.topic)}" placeholder="General" autocomplete="off"></label>`}
+    <textarea data-b="text" class="codebox" rows="7" aria-label="List to add" placeholder="${card?'term - definition':'question | correct answer | wrong answer'}">${esc(b.text)}</textarea>
+    <p class="count" data-b="count" style="margin:0">${sum.text}</p>
+    ${b.msg?`<div class="fb ${b.cls}" role="status">${b.msg}</div>`:''}
+    <div class="actions"><button class="btn" type="button" data-cm="bulkadd">${sum.label}</button></div></div></details>`}
+function syncBulk(root){const t=root.querySelector('[data-b="text"]'),tp=root.querySelector('[data-b="topic"]');if(t)AD.bulk.text=t.value;if(tp)AD.bulk.topic=tp.value;
+  const f=root.querySelector('#adbulk');if(f)AD.bulk.open=f.open}
+$('formulas').addEventListener('input',e=>{if(!e.target.dataset.b||!isCustom(subj))return;const root=$('formulas');syncBulk(root);const sum=bulkSummary();
+  root.querySelector('[data-b="count"]').textContent=sum.text;root.querySelector('[data-cm="bulkadd"]').textContent=sum.label});
 $('formulas').addEventListener('click',e=>{const b=e.target.closest('[data-cm]');if(!b||!isCustom(subj))return;const a=b.dataset.cm,root=$('formulas');
-  syncDraft(AD,root);const r=editorAction(AD,a,b,root);if(r===false)return;
+  syncDraft(AD,root);syncBulk(root);
+  if(a==='bulkkind'){Object.assign(AD.bulk,{kind:b.dataset.kind,msg:''});return renderAddTab()}
+  if(a==='bulkadd'){const B=AD.bulk,{r}=bulkSummary(),noun=B.kind==='card'?'flashcard':'question';
+    if(!r.items.length){Object.assign(B,{msg:B.text.trim()?'None of those lines could be read. Check the format in the example above.':'Paste a list first.',cls:'bad'});return renderAddTab()}
+    const s=findSub(subj);if(!commitCustom(()=>{s.items.push(...r.items);s.updated=Date.now()})){Object.assign(B,{msg:noSpace,cls:'bad'});return renderAddTab()}
+    const n=r.items.length;Object.assign(B,{text:'',msg:`Added ${n} ${noun}${n===1?'':'s'}${B.kind==='card'?'. They’re in Terms now.':'. They’re in Practice now.'}${r.bad.length?` ${r.bad.length} line${r.bad.length===1?' was':'s were'} skipped.`:''}`,cls:'good',open:true});
+    refreshSubjects();return}
+  const r=editorAction(AD,a,b,root);if(r===false)return;
   if(r){renderAddTab();return focusNewWrong(AD,root)}
   if(a==='edititem'){const it=findSub(subj).items.find(x=>x.id===b.dataset.id);if(!it)return;Object.assign(AD,{draft:draftFromItem(it),msg:''});renderAddTab();return $('adform').scrollIntoView({block:'start'})}
   if(a==='adcancel'){Object.assign(AD,{draft:blankDraft(AD.draft.kind,AD.draft.topic),msg:''});return renderAddTab()}

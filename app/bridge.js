@@ -15,8 +15,10 @@ export const TABS = [
 ];
 
 // Runs before the page draws, so it starts in the right light/dark mode with no flash.
+// If the student picked Light or Dark in the site's Theme menu, that choice wins over the phone's setting.
 export const themeScript = (dark) =>
-  `document.documentElement.setAttribute('data-theme','${dark ? 'dark' : 'light'}');true;`;
+  `(function(){var t=null;try{t=localStorage.getItem('ssg-theme')}catch(e){}
+  if(t!=='light'&&t!=='dark')document.documentElement.setAttribute('data-theme','${dark ? 'dark' : 'light'}');})();true;`;
 
 // Runs once the page has loaded.
 export const BRIDGE = `(function(){
@@ -40,6 +42,12 @@ export const BRIDGE = `(function(){
     var isAdd = function () { return typeof isCustom === 'function' && isCustom(subj); };
     var ss = setSubj;
     setSubj = function (id) { ss(id); post({ type: 'subject', add: isAdd() }); };
+    // Theme menu (Auto / Light / Dark): tell the app so its own bars match the page.
+    if (typeof setTheme === 'function') {
+      var st2 = setTheme;
+      setTheme = function (t) { st2(t); post({ type: 'theme', pref: t }); };
+      post({ type: 'theme', pref: themePref });
+    }
 
     // Backups: WebViews can't download files or use the web clipboard,
     // so hand the data to the phone instead.
@@ -77,7 +85,7 @@ export const BRIDGE = `(function(){
     }).observe(card, { childList: true, subtree: true });
 
     // Track the menu and pop-up panels so the phone's back button closes them instead of leaving the app.
-    var panels = ['whomenu', 'fbsheet', 'cmgr'].map(function (id) { return document.getElementById(id); }).filter(Boolean);
+    var panels = ['whomenu', 'fbsheet', 'cmgr', 'frsheet'].map(function (id) { return document.getElementById(id); }).filter(Boolean);
     var sendOpen = function () {
       post({ type: 'menu', open: panels.some(function (el) { return !el.hidden; }) });
     };
