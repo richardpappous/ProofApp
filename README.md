@@ -2,7 +2,7 @@
 
 A math and science practice and study site, from Elementary math through Pre-Calculus, Physics and Chemistry, plus subjects you make yourself.
 
-**Live site:** [https://richardpappous.github.io/Proof-App/](https://richardpappous.github.io/ProofApp/)
+**Live site:** https://richardpappous.github.io/ProofApp/
 
 ## Features
 - **Subjects:** Elementary, Middle School, Algebra 1, Geometry, Algebra 2, Pre-Calculus, Physics, and Chemistry

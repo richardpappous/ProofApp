@@ -3,7 +3,7 @@
 // backupObj, b64e, markBackup, bkMsg, renderProgress). If one of those is renamed
 // in index.html, update it here too.
 
-export const SITE_URL = 'https://richardpappous.github.io/Subject-Study-Guide/';
+export const SITE_URL = 'https://richardpappous.github.io/ProofApp/';
 
 // The five sections, in bottom-bar order. `key` must match the site's VIEWS list.
 export const TABS = [
