@@ -2474,9 +2474,11 @@ const Store={mode:'local',data:blank(),local:{profiles:{},current:'Me'},ref:null
       else this.dirty=true}
     this.saving=false;if(this.dirty&&this.ref){this.dirty=false;clearTimeout(this.timer);this.timer=setTimeout(()=>this.flush(),2000)}}
 };
-function record(subj,topic,ok,lvl,counts=true){const k=subj+'|'+topic,was=level(k).cls,t=Store.data.topics[k]||(Store.data.topics[k]={c:0,t:0,r:[]});
+// hinted: the student opened a hint first. Richard's rule: those answers don't count toward mastery
+// (right or wrong); they're counted in t.h instead so the topic doesn't look Easy-only.
+function record(subj,topic,ok,lvl,counts=true,hinted=false){const k=subj+'|'+topic,was=level(k).cls,t=Store.data.topics[k]||(Store.data.topics[k]={c:0,t:0,r:[]});
   t.t++;if(ok)t.c++;t.r=(t.r||[]).concat(ok?1:0).slice(-10);
-  if(lvl!==1){t.mn=(t.mn||0)+1;t.m=(t.m||[]).concat(ok?1:0).slice(-10)}
+  if(lvl!==1){if(hinted)t.h=(t.h||0)+1;else{t.mn=(t.mn||0)+1;t.m=(t.m||[]).concat(ok?1:0).slice(-10)}}
   t.last=Date.now();const res={mastered:[],goalHit:false};
   if(counts){const D=Store.data;D.pc=(D.pc||0)+1;const dk=dayKey(0),before=D.days[dk]||0;D.days[dk]=before+1;if(D.goal&&before<D.goal&&before+1>=D.goal)res.goalHit=true;
     const ks=Object.keys(D.days);if(ks.length>400)ks.sort().slice(0,ks.length-400).forEach(x=>delete D.days[x]);
@@ -2484,10 +2486,10 @@ function record(subj,topic,ok,lvl,counts=true){const k=subj+'|'+topic,was=level(
   if(was!=='m'&&level(k).cls==='m'){res.mastered.push(k);if(!SES.mastered.includes(k))SES.mastered.push(k)}
   return res}
 const avgPct=a=>Math.round(100*a.reduce((x,y)=>x+y,0)/a.length);
-/* Mastery counts only Medium and Hard answers (t.m, t.mn). Easy answers still count toward totals and the Easy-only accuracy. */
+/* Mastery counts only Medium and Hard answers given without a hint (t.m, t.mn). Easy and hinted answers still count toward totals. */
 function level(k){const t=Store.data.topics[k];if(!t||!t.t)return{cls:'n',label:'Not started',pct:null,t:0,mn:0};
   const mn=t.mn||0;
-  if(!mn){const r=t.r&&t.r.length?t.r:[1];return{cls:'n',label:'Easy only',pct:avgPct(r),t:t.t,mn:0,easyOnly:true}}
+  if(!mn){const r=t.r&&t.r.length?t.r:[1];return t.h?{cls:'n',label:'Hints only',pct:avgPct(r),t:t.t,mn:0,hintOnly:true}:{cls:'n',label:'Easy only',pct:avgPct(r),t:t.t,mn:0,easyOnly:true}}
   const pct=avgPct(t.m),[cls,label]=pct>=85&&mn>=5?['m','Mastered']:pct>=60?['g','Getting there']:['w','Needs work'];
   return{cls,label,pct,t:t.t,mn}}
 const subjName=id=>(SUBJ.find(s=>s.id===id)||{name:'Removed subject'}).name;
@@ -2664,12 +2666,18 @@ function render(){
   // Multiple choice: tapping a choice checks it right away.
   $('pcard').querySelectorAll('.choice').forEach(b=>b.onclick=()=>{if(solved||b.disabled)return;$('ain').value=b.dataset.ci;
     $('pcard').querySelectorAll('.choice').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));check()});
-  $('bhint').onclick=()=>{if(hintN>=H.length)return;hintN++;
-    $('hints').innerHTML=`<div class="tip"><b>Hint ${hintN} of ${H.length}</b><ol class="steps">${H.slice(0,hintN).map(h=>`<li>${h}</li>`).join('')}</ol></div>`;
+  // Opening a hint marks the problem (c.hints, saved with it) so it won't count toward mastery,
+  // and the hints come back if the student leaves and returns to the same problem.
+  const showHints=()=>{const note=c.level!==1&&!answered?'<div class="count">Hints used, so this one won’t count toward mastery.</div>':'';
+    $('hints').innerHTML=`<div class="tip"><b>Hint ${hintN} of ${H.length}</b>${note}<ol class="steps">${H.slice(0,hintN).map(h=>`<li>${h}</li>`).join('')}</ol></div>`;
     const b=$('bhint');if(hintN>=H.length){b.textContent='No more hints';b.disabled=true}else b.textContent='Next hint'};
+  $('bhint').onclick=()=>{if(hintN>=H.length)return;hintN++;c.hints=hintN;if(SLOTS[slotKey()]&&SLOTS[slotKey()].p===c)saveSlots();showHints()};
+  if(c.hints&&H.length){hintN=Math.min(c.hints,H.length);showHints()}
   solved=false;
   $('af').addEventListener('submit',e=>{e.preventDefault();if(solved){nextFromCheck();return}check()});
-  $('bsteps').onclick=()=>{clearSlot();if(!answered){answered=true;if(cur.review)reviewResult(cur.review,false);else addReview(subj+'|'+cur.name,cur.level);Store.changed();refreshInfo()}$('more').innerHTML=stepsHTML(cur,true)};
+  // Revealing the answer before answering counts as a wrong answer, for mastery too (Richard's rule),
+  // even if hints were opened first, so it can't be used to skip a problem.
+  $('bsteps').onclick=()=>{clearSlot();if(!answered){answered=true;const res=record(subj,cur.name,false,cur.level);if(cur.review)reviewResult(cur.review,false);else addReview(subj+'|'+cur.name,cur.level);Store.changed();announce(res);refreshInfo()}$('more').innerHTML=stepsHTML(cur,true)};
   $('bnext').onclick=()=>{if(cur.review&&!answered){postponeReview(cur.review);Store.changed()}newProblem()};
   if($('bform'))$('bform').onclick=()=>openFormulaSheet(cur.name);
 }
@@ -2677,7 +2685,7 @@ function check(){
   const g=grade(cur,$('ain').value),fb=$('fb');
   if(BADMSG[g]){fb.innerHTML=`<div class="fb neutral">${BADMSG[g]}</div>`;return}
   const ok=g==='ok';
-  if(!answered){answered=true;const res=record(subj,cur.name,ok,cur.level);if(cur.review)reviewResult(cur.review,ok);else if(!ok)addReview(subj+'|'+cur.name,cur.level);Store.changed();announce(res);refreshInfo()
+  if(!answered){answered=true;const res=record(subj,cur.name,ok,cur.level,true,!!cur.hints);if(cur.review)reviewResult(cur.review,ok);else if(!ok)addReview(subj+'|'+cur.name,cur.level);Store.changed();announce(res);refreshInfo()
     if(!ok){const s=SLOTS[slotKey()];if(s){s.answered=true;saveSlots()}}}  // a wrong try already counted; don't count it again after coming back
   const why=ok?'':mistakeHint(cur,$('ain').value);
   fb.innerHTML=ok?`<div class="fb good">Correct: ${answerText(cur)}</div>`:`<div class="fb bad">Not quite. ${why?`<span style="font-weight:400">${why}</span> `:''}Try again or open the steps.</div>`;
@@ -3030,7 +3038,7 @@ function copyBackup(){const code='SSG1:'+b64e(JSON.stringify(backupObj()));
   const fail=()=>{BK.code=code;markBackup();bkMsg('Copy didn’t work here. The code is below: select all of it and copy it yourself.','neutral');const t=$('bkcode');if(t){t.focus();t.select()}};
   try{navigator.clipboard.writeText(code).then(()=>{BK.code='';markBackup();bkMsg('Backup code copied. Paste it somewhere safe, like a note or a message to yourself.','good')},fail)}catch(e){fail()}}
 function loadBackupText(txt){const o=parseBackup(txt);if(!o)return bkMsg('That isn’t a Proof backup. Check that you copied the whole code or picked the right file.','bad');BK.pending=o;BK.msg='';renderProgress()}
-function mergeInto(a,b){for(const k in b.topics){const x=a.topics[k],y=b.topics[k];if(!x){a.topics[k]=y;continue}x.c+=y.c;x.t+=y.t;x.r=[...(y.r||[]),...(x.r||[])].slice(-10);x.mn=(x.mn||0)+(y.mn||0);x.m=[...(y.m||[]),...(x.m||[])].slice(-10);x.last=Math.max(x.last||0,y.last||0)}
+function mergeInto(a,b){for(const k in b.topics){const x=a.topics[k],y=b.topics[k];if(!x){a.topics[k]=y;continue}x.c+=y.c;x.t+=y.t;x.r=[...(y.r||[]),...(x.r||[])].slice(-10);x.mn=(x.mn||0)+(y.mn||0);x.h=(x.h||0)+(y.h||0);x.m=[...(y.m||[]),...(x.m||[])].slice(-10);x.last=Math.max(x.last||0,y.last||0)}
   const ids=new Set(a.tests.map(t=>t.id));b.tests.forEach(t=>{if(!ids.has(t.id))a.tests.push(t)});a.tests.sort((p,q)=>q.ts-p.ts);a.tests=a.tests.slice(0,60);
   const pid=new Set(a.presets.map(p=>p.id));b.presets.forEach(p=>{if(!pid.has(p.id))a.presets.push(p)});
   for(const d in b.days)a.days[d]=Math.max(a.days[d]||0,b.days[d]);a.pc=Math.max(a.pc||0,b.pc||0);const rk=new Set(a.review.map(x=>x.k));b.review.forEach(x=>{if(!rk.has(x.k))a.review.push(x)})}
@@ -3114,8 +3122,8 @@ function renderProgress(){const el=$('progress'),keys=allKeys(subj),L=keys.map(k
     <div class="stats"><div class="stat"><b>${todayN}${G?' / '+G:''}</b><span>solved today</span></div><div class="stat"><b>${st}</b><span>day streak</span></div><div class="stat"><b>${best}</b><span>best streak</span></div></div>
     ${weekHTML()}
     <p class="note">A day counts toward your streak when you reach the goal. Every answered problem counts, in any subject and at any level.</p></div>
-  <div class="card"><h3 class="h3">Topics</h3><p class="note">Mastery counts only Medium and Hard answers: 85% or better on the last 10, with at least 5 answered. Easy answers are tracked but don’t count toward mastery.</p>
-    <div>${L.map(x=>{const tp=splitKey(x.k)[1];return `<div class="trow"><div><b>${tp}</b><div class="count">${!x.t?'No answers yet':x.easyOnly?`${x.t} answered on Easy · try Medium to start mastery`:`${x.t} answered · ${x.mn} on Medium/Hard${x.cls!=='m'&&x.mn<5?` · ${5-x.mn} more to qualify`:''}`}</div></div>
+  <div class="card"><h3 class="h3">Topics</h3><p class="note">Mastery counts only Medium and Hard answers: 85% or better on the last 10, with at least 5 answered. Easy answers, and problems where you opened a hint, are tracked but don’t count toward mastery.</p>
+    <div>${L.map(x=>{const tp=splitKey(x.k)[1];return `<div class="trow"><div><b>${tp}</b><div class="count">${!x.t?'No answers yet':x.easyOnly?`${x.t} answered on Easy · try Medium to start mastery`:x.hintOnly?`${x.t} answered, all with hints · solve one without a hint to start mastery`:`${x.t} answered · ${x.mn} on Medium/Hard${x.cls!=='m'&&x.mn<5?` · ${5-x.mn} more to qualify`:''}`}</div></div>
       <div class="bar" title="${x.pct===null?'':x.pct+'%'}"><span style="width:${x.pct||0}%"></span></div>
       <div style="display:flex;gap:6px;align-items:center;justify-content:flex-end;flex-wrap:wrap"><span class="pill ${x.cls}">${x.label}${x.pct===null?'':' · '+x.pct+'%'}</span><button class="linkbtn" type="button" data-prac="${esc(tp)}">Practice</button></div></div>`}).join('')}</div></div>
   <details class="fold" id="histfold"${PG.hist?' open':''}><summary>Test history <span class="count">${tests.length}</span></summary><div class="foldbody">
