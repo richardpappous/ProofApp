@@ -201,6 +201,11 @@ select{font:600 15px var(--body);padding:9px 12px;border:1px solid var(--line);b
 .ftable div:nth-child(odd){color:var(--muted);padding-right:12px}
 .ftable div:nth-child(even){font-family:var(--mono);font-weight:600;overflow-wrap:anywhere}
 .story{margin:0;font-size:18px;line-height:1.55;max-width:62ch}
+.tabwrap{overflow-x:auto;margin:10px 0 2px}
+.dtab{border-collapse:collapse;font-size:15px;font-variant-numeric:tabular-nums}
+.dtab th,.dtab td{border:1px solid var(--line);padding:5px 10px;text-align:center}
+.dtab th{background:var(--accent-soft);font-weight:700}
+.dtab td:first-child,.dtab th:first-child{text-align:left}
 .askline{margin:0;font-weight:700}
 .figbox{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;justify-content:center;overflow:hidden}
 .fig{display:block;max-width:100%;height:auto;overflow:visible}
@@ -1642,6 +1647,331 @@ HARD.chem['pH and acids']=()=>{const a=pick([1.5,2,2.5,3.2,4,5,6.3,7.5,8.1]),n=r
   const p=pick([2.4,3.3,4.7,5.2,8.6,9.1,10.5,11.8]),h=10**-p;
   return{tol:h*.01,story:`A solution has a pH of ${p}.`,ask:'What is [H⁺], in M? Give 3 significant figures, like 3.98×10^-4.',ans:h,show:sci(h),steps:['[H⁺] = 10^(−pH)',`[H⁺] = 10^(−${p}) ≈ ${sci(h)} M`],tip:'Use the 10ˣ key on a calculator with the negative pH.'}};
 
+/* ================= SAT/ACT Math ================= */
+SUBJ.push({id:'sat',name:'SAT/ACT Math'});
+NOTES.sat='Like the real tests: most questions are multiple choice, and some ask you to type the answer (a grid-in). Fractions like 3/4 and decimals both work.';
+GEN.sat={};EASY.sat={};HARD.sat={};
+// Numbers the way a test prints them: whole numbers, simple fractions, or up to 2 decimals.
+const nf=v=>{if(Number.isInteger(v))return N(v);for(let d=2;d<=12;d++){const n=v*d;if(Math.abs(n-Math.round(n))<1e-9)return fr(Math.round(n),d)}return N(r2(v))};
+// Fractions with bigger denominators (probabilities like 27/41, trig ratios like 40/41). When the right
+// answer is a fraction (p.frac), every choice must be one too, or a lone fraction gives the answer away.
+const fx=v=>{for(let d=1;d<=600;d++){const n=v*d;if(Math.abs(n-Math.round(n))<1e-9)return fr(Math.round(n),d)}return nf(v)};
+// About 70% of SAT questions are multiple choice (A–D), the rest are typed "grid-ins", so most problems
+// become multiple choice. wrong = [[value or text, why a student would pick it], ...]; the why becomes the
+// feedback for that choice (see mistakeHint). o.mc forces multiple choice; o.f formats numbers.
+function satQ(p,wrong,o={}){
+  if(!o.mc&&Math.random()<.3)return p;
+  const txt=v=>typeof v==='string'?v:(o.f||(p.frac?fx:nf))(v),right=p.show!==undefined?p.show:txt(p.ans),seen=new Set([right]),opts=[];
+  for(const [v,why] of wrong){if(typeof v==='number'&&!isFinite(v))continue;const t=txt(v);if(!seen.has(t)&&opts.length<3){seen.add(t);opts.push([t,why||''])}}
+  for(let d=1;opts.length<3&&typeof p.ans==='number'&&d<50;d++)for(const v of [p.ans+d,p.ans-d]){const t=txt(v);if(opts.length<3&&!seen.has(t)){seen.add(t);opts.push([t,''])}}
+  const all=shuf([[right,''],...opts]);
+  return{...p,kind:'mc',choices:all.map(x=>x[0]),correct:all.findIndex(x=>x[0]===right),show:right,why:all.map(x=>x[1])}}
+const hx=s=>s.replace(/</g,'&lt;').replace(/>/g,'&gt;');  // inequality signs inside HTML text
+const usd=v=>'$'+(Number.isInteger(v)?com(v):v.toFixed(2)),pct=v=>`${+v.toFixed(2)}%`;
+
+/* ---------- algebra ---------- */
+EASY.sat['Linear equations']=()=>{const a=ri(2,9),x=nz(-9,12),b=nz(-15,15),c=a*x+b;
+  return satQ({q:`${a}x${S(b)} = ${N(c)}`,ask:'What value of x satisfies the equation?',ans:x,
+    steps:[`${b>0?'Subtract':'Add'} ${Math.abs(b)} ${b>0?'from':'to'} both sides: ${a}x = ${N(c-b)}`,`Divide both sides by ${a}: x = ${N(x)}`],tip:'Undo the adding or subtracting first, then the multiplying.'},
+    [[(c+b)/a,'Check the sign when you move the constant to the other side.'],[c-b,'You still need to divide by the coefficient of x.'],[c/a-b,'Move the constant first, then divide.']])};
+GEN.sat['Linear equations']=()=>{
+  if(coin()){let a,c,b,d,x;do{a=ri(2,9);c=ri(1,8);x=nz(-8,10);b=nz(-12,12);d=(a-c)*x+b}while(a===c);
+    return satQ({q:`${a}x${S(b)} = ${C(c)}x${S(d)}`,ask:'What is the value of x?',ans:x,
+      steps:[`Subtract ${C(c)}x from both sides: ${C(a-c)}x${S(b)} = ${N(d)}`,`${C(a-c)}x = ${N(d-b)}`,`x = ${N(x)}`],tip:'Collect the x-terms on one side and the numbers on the other.'},
+      [[(d+b)/(a-c),'Check the sign when you move the constant.'],[(d-b)/(a+c),'Subtract the x-terms to collect them, don’t add.'],[-x,'Check your signs.']])}
+  const f=pick([40,50,60,75,85]),r=pick([35,40,45,55,65,70]),h=ri(2,8),T=f+r*h;
+  return satQ({story:`An electrician charges a $${f} service fee plus $${r} per hour. A repair cost $${T} in total.`,ask:'For how many hours did the electrician work?',ans:h,
+    steps:[`${f} + ${r}h = ${T}`,`${r}h = ${T-f}`,`h = ${h}`],tip:'Build the equation from the words: fixed amount + rate × time = total.'},
+    [[T/r,'Subtract the service fee before dividing.'],[(T+f)/r,'The fee is part of the total, so subtract it.'],[h+1,'']])};
+HARD.sat['Linear equations']=()=>{const a=ri(2,9),b=nz(-9,9);
+  if(coin()){let c;do{c=nz(-12,12)}while(c===a*b);
+    return satQ({q:`${a}(x${S(b)}) = kx${S(c)}`,ask:'In the equation, k is a constant. For what value of k does the equation have no solution?',ans:a,
+      steps:[`Distribute: ${a}x${S(a*b)} = kx${S(c)}`,'No solution means the x-terms cancel but the constants don’t, so the coefficients of x must match',`k = ${a}`],tip:'No solution: same x-coefficient, different constant. Infinitely many: both sides identical.'},
+      [[a*b,'That makes the constants match; for no solution, the x-coefficients must match.'],[-a,'The coefficients must be equal, not opposite.'],[c,'k multiplies x, so compare it with the x-coefficient.']])}
+  return satQ({q:`${a}(x${S(b)}) = ${a}x + k`,ask:'In the equation, k is a constant. For what value of k does the equation have infinitely many solutions?',ans:a*b,
+    steps:[`Distribute: ${a}x${S(a*b)} = ${a}x + k`,'Infinitely many solutions means both sides are exactly the same',`k = ${N(a*b)}`],tip:'Infinitely many solutions: after simplifying, both sides are the same expression.'},
+    [[b,`Distribute the ${a} to both terms inside the parentheses.`],[a,'k is the constant term, not the coefficient of x.'],[-a*b,'Check the sign after distributing.']])};
+
+EASY.sat['Systems of equations']=()=>{const x=nz(-6,12),y=nz(-6,12),s=x+y,d=x-y;
+  return satQ({q:`x + y = ${N(s)}<br>x − y = ${N(d)}`,ask:'What is the value of x in the solution to the system?',ans:x,steps:[`Add the equations: 2x = ${N(s+d)}`,`x = ${N(x)}`],tip:'When one variable has opposite coefficients, add the equations to eliminate it.'},
+    [[y,'That is the value of y.'],[s+d,'Divide by 2 after adding.'],[s,'']])};
+GEN.sat['Systems of equations']=()=>{
+  if(coin()){const A=pick([9,10,12,14,15]),Cs=pick([4,5,6,7,8]),a=ri(20,120),c=ri(20,120),n=a+c,T=A*a+Cs*c;
+    return satQ({story:`A school play sold ${n} tickets for a total of $${com(T)}. Adult tickets cost $${A} and student tickets cost $${Cs}.`,ask:'How many adult tickets were sold?',ans:a,
+      steps:[`a + s = ${n}  and  ${A}a + ${Cs}s = ${com(T)}`,`Substitute s = ${n} − a: ${A}a + ${Cs}(${n} − a) = ${com(T)}`,`${A-Cs}a + ${com(Cs*n)} = ${com(T)}, so ${A-Cs}a = ${com(T-Cs*n)}`,`a = ${a}`],tip:'Two unknowns need two equations: one for how many, one for the money.'},
+      [[c,'That is the number of student tickets.'],[Math.round(T/A),'Some of the money came from student tickets too.'],[Math.round(n/2),'']])}
+  let m,b,x,p,q;do{m=nz(-4,4);b=nz(-8,8);x=nz(-6,6);p=ri(1,5);q=nz(-4,4)}while(p+q*m===0);const y=m*x+b,c=p*x+q*y;
+  return satQ({q:`y = ${C(m)}x${S(b)}<br>${C(p)}x${Sx(q,'y')} = ${N(c)}`,ask:'The solution to the system is (x, y). What is the value of x?',ans:x,
+    steps:[`Substitute for y: ${C(p)}x ${q<0?'−':'+'} ${Math.abs(q)===1?'':Math.abs(q)}(${C(m)}x${S(b)}) = ${N(c)}`,`${C(p+q*m)}x${S(q*b)} = ${N(c)}`,`x = ${N(x)}`],tip:'If one equation already says y = …, substitute it into the other.'},
+    [[y,'That is the value of y.'],[-x,'Check your signs when you distribute.'],[x+1,'']])};
+HARD.sat['Systems of equations']=()=>{
+  if(coin()){const a=ri(2,6),b=ri(2,6),k=ri(2,4),c=nz(-9,9);let d;do{d=nz(-20,20)}while(d===k*c);
+    return satQ({q:`${a}x + ${b}y = ${N(c)}<br>${k*a}x + ty = ${N(d)}`,ask:'In the system, t is a constant. If the system has no solution, what is the value of t?',ans:k*b,
+      steps:['No solution means the lines are parallel: the x- and y-coefficients are in the same ratio',`${k*a} is ${k} times ${a}, so t must be ${k} times ${b}`,`t = ${k*b}`],tip:'No solution: proportional x- and y-coefficients but not proportional constants.'},
+      [[b,`The second equation’s coefficients are ${k} times the first’s.`],[-k*b,'Parallel lines have proportional coefficients with the same sign.'],[k*a,'Compare y-coefficients with y-coefficients.']])}
+  let p,q,x,y;do{p=ri(2,7);q=ri(1,7);x=nz(-5,8);y=nz(-5,8)}while(p===q||x===y);const e1=p*x+q*y,e2=q*x+p*y;
+  return satQ({q:`${p}x + ${C(q)}y = ${N(e1)}<br>${C(q)}x + ${p}y = ${N(e2)}`,ask:'What is the value of x + y?',ans:x+y,
+    steps:[`Add the equations: ${p+q}x + ${p+q}y = ${N(e1+e2)}`,`Divide by ${p+q}: x + y = ${N(x+y)}`],tip:'When the question asks for x + y, look for a shortcut before solving for each variable.'},
+    [[x,'That is x alone; the question asks for x + y.'],[e1+e2,`Divide by ${p+q} after adding.`],[x-y,'Subtracting the equations gives x − y, not x + y.']])};
+
+EASY.sat['Lines and slope']=()=>{let x1,y1,x2,y2;do{x1=ri(-6,6);y1=ri(-6,6);x2=ri(-6,6);y2=ri(-6,6)}while(x1===x2||y1===y2);const m=(y2-y1)/(x2-x1);
+  return satQ({q:`(${N(x1)}, ${N(y1)}) and (${N(x2)}, ${N(y2)})`,ask:'A line passes through the points. What is its slope?',ans:m,
+    steps:['Slope = (y₂ − y₁) ÷ (x₂ − x₁)',`(${N(y2)} − ${P(y1)}) ÷ (${N(x2)} − ${P(x1)}) = ${N(y2-y1)} ÷ ${N(x2-x1)}`,`Slope = ${nf(m)}`],tip:'Rise over run: the change in y goes on top.'},
+    [[1/m,'Slope is rise over run: the change in y goes on top.'],[-m,'Subtract the coordinates in the same order, top and bottom.'],[-1/m,'That is the slope of a perpendicular line.']])};
+const RATES=[['a plumber’s bill','hours of work','1 hour of work','The cost per hour of work','The fixed service fee'],['a phone plan','gigabytes of data used','1 gigabyte','The cost per gigabyte of data','The base price of the plan'],['a taxi ride','miles driven','1 mile','The cost per mile','The pickup fee'],['a bowling party','games played','1 game','The cost per game','The fixed room fee']];
+GEN.sat['Lines and slope']=()=>{
+  if(coin()){const [thing,xs,x1,sm,im]=pick(RATES),r=ri(2,30),f=ri(10,60),sl=coin();
+    return satQ({story:`The total cost C, in dollars, of ${thing} is C = ${r}x + ${f}, where x is the number of ${xs}.`,ask:`What does the number ${sl?r:f} represent?`,ans:0,show:sl?sm:im,
+      steps:[sl?`${r} is multiplied by x, so it is charged once for each of the ${xs}: a rate`:`${f} is charged no matter what x is (it is the cost when x = 0)`,`It is ${(sl?sm:im)[0].toLowerCase()+(sl?sm:im).slice(1)}`],tip:'In a linear model, the slope is the rate per unit and the y-intercept is the starting or fixed amount.'},
+      [[sl?im:sm,sl?'That is the constant term, not the number multiplied by x.':'That is the number multiplied by x.'],[`The total cost for ${x1}`,`That would be ${r} + ${f} = ${r+f}.`],[`The number of ${xs}`,`x is the number of ${xs}.`]],{mc:true})}
+  const m=nz(-5,5),x0=nz(-5,5),b=nz(-9,9),y0=m*x0+b;
+  return satQ({story:`A line has slope ${N(m)} and passes through the point (${N(x0)}, ${N(y0)}).`,ask:'What is the y-intercept of the line?',ans:b,
+    steps:[`Use y = mx + b: ${N(y0)} = ${N(m)}(${N(x0)}) + b`,`${N(y0)} = ${N(m*x0)} + b`,`b = ${N(b)}`],tip:'Plug the point into y = mx + b and solve for b.'},
+    [[y0+m*x0,'Subtract m·x from y; don’t add it.'],[y0-x0,'Multiply the slope by x before subtracting.'],[-b,'']])};
+HARD.sat['Lines and slope']=()=>{let p,q;do{p=nz(-4,4);q=ri(1,5)}while(gcd(p,q)!==1||Math.abs(p)===q);const m=p/q,pm=-q/p,c=nz(-6,6),t=nz(-2,2),x0=p*t,b=nz(-8,8),y0=pm*x0+b;
+  return satQ({story:`Line k is perpendicular to the line y = ${fr(p,q)}x${S(c)} and passes through the point (${N(x0)}, ${N(y0)}).`,ask:'What is the y-intercept of line k?',ans:b,
+    steps:[`Perpendicular slopes are negative reciprocals, so line k has slope ${fr(-q,p)}`,`${N(y0)} = ${fr(-q,p)}(${N(x0)}) + b, so ${N(y0)} = ${N(pm*x0)} + b`,`b = ${N(b)}`],tip:'Flip the fraction and change the sign to get a perpendicular slope.'},
+    [[y0-m*x0,'Use the perpendicular slope, not the original one.'],[y0-(q/p)*x0,'Perpendicular slopes have opposite signs too.'],[y0+m*x0,'']])};
+
+const FLIP={'<':'>','>':'<','≤':'≥','≥':'≤'};
+EASY.sat['Inequalities']=()=>{let a;do{a=nz(-6,6)}while(Math.abs(a)===1);const x=nz(-8,8),b=nz(-10,10),c=a*x+b,op=pick(['<','>','≤','≥']),rop=a<0?FLIP[op]:op;
+  return satQ({q:hx(`${C(a)}x${S(b)} ${op} ${N(c)}`),ask:'Which inequality is equivalent?',ans:0,show:`x ${rop} ${N(x)}`,
+    steps:[hx(`${b>0?'Subtract':'Add'} ${Math.abs(b)}: ${C(a)}x ${op} ${N(c-b)}`),`Divide by ${N(a)}${a<0?', and flip the sign because you divided by a negative':''}`,hx(`x ${rop} ${N(x)}`)],tip:'Multiplying or dividing both sides by a negative number flips the inequality.'},
+    [[`x ${a<0?op:FLIP[op]} ${N(x)}`,a<0?'Dividing by a negative flips the inequality sign.':'The sign only flips when you divide by a negative.'],[`x ${rop} ${N(-x)}`,'Check the sign of the number.'],[`x ${rop} ${nf((c+b)/a)}`,'Move the constant using the opposite operation.']],{mc:true})};
+GEN.sat['Inequalities']=()=>{const lim=pick([500,600,750,800,1000,1200]),d=ri(60,95),w=pick([15,18,20,22,25,30,35,40]),x=(lim-d)/w,n=Math.floor(x);
+  return satQ({story:`An elevator can carry at most ${lim} kilograms. A worker who weighs ${d} kilograms is loading boxes that weigh ${w} kilograms each.`,ask:'What is the greatest number of boxes the worker can bring on the elevator in one trip?',ans:n,
+    steps:[`${d} + ${w}b ≤ ${lim}`,`${w}b ≤ ${lim-d}, so b ≤ ${r2(x)}`,`b must be a whole number, so b = ${n}`],tip:'“At most” means ≤. Round down, because rounding up would go over the limit.'},
+    [[Number.isInteger(x)?n+1:Math.ceil(x),'Rounding up would put the elevator over its limit.'],[Math.floor(lim/w),'Include the worker’s own weight.'],[n-1,'']])};
+HARD.sat['Inequalities']=()=>{let m1,b1,m2,b2,good,bad,pts;
+  do{m1=nz(-3,3);b1=nz(-5,5);m2=nz(-3,3);b2=nz(-2,8);pts=[];for(let i=0;i<40;i++)pts.push([ri(-6,6),ri(-6,6)]);
+    const ok=([x,y])=>y>m1*x+b1&&y<m2*x+b2,edge=([x,y])=>y===m1*x+b1||y===m2*x+b2;
+    good=pts.filter(p=>ok(p)&&!edge(p));bad=pts.filter(p=>!ok(p)&&!edge(p))}while(!good.length||bad.length<3);
+  const g=good[0],B=shuf(bad),ps=[],seen=new Set([String(g)]);for(const p of B)if(!seen.has(String(p))&&ps.length<3){seen.add(String(p));ps.push(p)}
+  const pt=([x,y])=>`(${N(x)}, ${N(y)})`,why=([x,y])=>y>m1*x+b1?`Check the second inequality: ${N(y)} is not less than ${N(m2*x+b2)}.`:`Check the first inequality: ${N(y)} is not greater than ${N(m1*x+b1)}.`;
+  return satQ({q:hx(`y > ${C(m1)}x${S(b1)}`)+'<br>'+hx(`y < ${C(m2)}x${S(b2)}`),ask:'Which point is a solution to the system of inequalities?',ans:0,show:pt(g),
+    steps:['Test each point in both inequalities',hx(`${pt(g)}: ${N(g[1])} > ${N(m1*g[0]+b1)} and ${N(g[1])} < ${N(m2*g[0]+b2)}`),`Both are true, so ${pt(g)} is a solution`],tip:'A solution to a system must make every inequality true. One failure rules a point out.'},
+    ps.map(p=>[pt(p),why(p)]),{mc:true})};
+
+/* ---------- advanced math ---------- */
+EASY.sat['Quadratics']=()=>{
+  if(coin()){const r=ri(2,12),k=r*r;return satQ({q:`x² − ${k} = 0`,ask:'What is the positive solution?',ans:r,steps:[`x² = ${k}`,`x = ±${r}, so the positive solution is ${r}`],tip:'Take the square root of both sides, and remember there are two roots.'},
+    [[k/2,'Take the square root; don’t divide by 2.'],[k,'Take the square root of both sides.'],[-r,'The question asks for the positive solution.']])}
+  let a,b;do{a=ri(1,9);b=ri(1,9)}while(a===b);
+  return satQ({q:`(x + ${a})(x − ${b}) = 0`,ask:'What is the positive solution?',ans:b,steps:['Set each factor equal to 0',`x + ${a} = 0 gives x = −${a};  x − ${b} = 0 gives x = ${b}`,`The positive solution is ${b}`],tip:'Zero product property: if a product is 0, one of the factors is 0.'},
+    [[a,`x + ${a} = 0 gives x = −${a}, which is negative.`],[-b,`x − ${b} = 0 gives x = ${b}. Watch the sign.`],[a*b,'']])};
+GEN.sat['Quadratics']=()=>{const w=W(2);
+  if(w<2){let r1,r2;do{r1=nz(-9,9);r2=nz(-9,9)}while(r1===r2||r1===-r2);const B=-(r1+r2),Cc=r1*r2,big=Math.max(r1,r2),q=`x²${Sx(B)}${S(Cc)} = 0`,
+    fac=[`Find two numbers that multiply to ${N(Cc)} and add to ${N(B)}: ${N(-r1)} and ${N(-r2)}`,`(x${S(-r1)})(x${S(-r2)}) = 0, so x = ${N(r1)} or x = ${N(r2)}`];
+    if(w===0)return satQ({q,ask:'What is the greater solution?',ans:big,steps:[...fac,`The greater solution is ${N(big)}`],tip:'Factor, then set each factor equal to 0. Watch the signs.'},
+      [[-big,'Setting x + a = 0 gives x = −a. Watch the sign.'],[Math.min(r1,r2),'That is the smaller solution.'],[-Math.min(r1,r2),'']]);
+    return satQ({q,ask:'What is the sum of the solutions?',ans:r1+r2,steps:[...fac,`Sum = ${N(r1)} + ${P(r2)} = ${N(r1+r2)}`],tip:'Shortcut: the solutions of x² + bx + c = 0 add up to −b.'},
+      [[B,'The sum of the solutions is −b, not b.'],[Cc,'That is the product of the solutions.'],[-Cc,'']])}
+  const h=nz(-6,6),k=nz(-9,9),b=-2*h,c=h*h+k;
+  return satQ({q:`y = x²${Sx(b)}${S(c)}`,ask:'What is the minimum value of y?',ans:k,steps:[`The vertex is at x = −b ÷ (2a) = ${N(-b)} ÷ 2 = ${N(h)}`,`Plug in x = ${N(h)}: y = ${N(h*h)} − ${Math.abs(b*h)}${S(c)} = ${N(k)}`,`The minimum value is ${N(k)}`],tip:'The minimum of an upward parabola is the y-value of its vertex.'},
+    [[h,'That is the x-coordinate of the vertex; the question asks for y.'],[c,'That is the y-intercept (x = 0), not the minimum.'],[-k,'']])};
+HARD.sat['Quadratics']=()=>{
+  if(coin()){const r=ri(2,9),k=r*r;return satQ({q:`x² + bx + ${k} = 0`,ask:'In the equation, b is a positive constant. If the equation has exactly one real solution, what is b?',ans:2*r,
+    steps:['Exactly one real solution means the discriminant is 0: b² − 4ac = 0',`b² − 4(1)(${k}) = 0, so b² = ${4*k}`,`b = ${2*r}`],tip:'Discriminant: positive means two solutions, zero means one, negative means none.'},
+    [[r,'b² = 4ac, so b = 2√c, not √c.'],[4*k,'Take the square root of b².'],[k,'']])}
+  const m=ri(1,4),v=32*m,h0=pick([0,4,5,6,8,10]),H=16*m*m+h0;
+  return satQ({story:`A ball is thrown upward. Its height in feet after t seconds is h(t) = −16t² + ${v}t${h0?S(h0):''}.`,ask:'What is the maximum height of the ball, in feet?',ans:H,
+    steps:[`The maximum is at the vertex: t = −b/(2a) = −${v} ÷ (2 × −16) = ${m}`,`h(${m}) = −16(${m*m}) + ${v}(${m})${h0?S(h0):''} = ${N(-16*m*m)} + ${v*m}${h0?S(h0):''}`,`Maximum height = ${H} feet`],tip:'For the highest or lowest value of a quadratic, find the vertex.'},
+    [[h0+32*m*m,`Plug in t = ${m} carefully: −16(${m})² is negative.`],[m,'That is the time of the maximum, not the height.'],[h0||v,'']])};
+
+EASY.sat['Exponents and radicals']=()=>{const a=ri(2,9),b=ri(2,9),t=pick(['mul','pow','div']);
+  if(t==='mul')return satQ({q:`x${supN(a)} · x${supN(b)} = xⁿ`,ask:'What is the value of n?',ans:a+b,steps:['When you multiply powers with the same base, add the exponents',`n = ${a} + ${b} = ${a+b}`],tip:'Same base, multiplying: add exponents.'},
+    [[a*b,'Multiply exponents only for a power raised to a power. Here, add them.'],[Math.abs(a-b),'Subtract exponents when dividing, not multiplying.'],[a+b+1,'']]);
+  if(t==='pow')return satQ({q:`(x${supN(a)})${supN(b)} = xⁿ`,ask:'What is the value of n?',ans:a*b,steps:['A power raised to a power: multiply the exponents',`n = ${a} × ${b} = ${a*b}`],tip:'Power of a power: multiply exponents.'},
+    [[a+b,'For a power raised to a power, multiply the exponents.'],[a**b>999?a*b+a:a**b,'Multiply the exponents; don’t raise one to the other.'],[a*b-1,'']]);
+  const c=a+b;return satQ({q:`x${supN(c)} ÷ x${supN(b)} = xⁿ`,ask:'For x ≠ 0, what is the value of n?',ans:a,steps:['Dividing powers with the same base: subtract the exponents',`n = ${c} − ${b} = ${a}`],tip:'Same base, dividing: subtract exponents.'},
+    [[c+b,'Dividing means subtracting exponents.'],[c/b,'Subtract the exponents; don’t divide them.'],[a+1,'']])};
+const xe=(a,b)=>b===1?`x${supN(a)}`:`x^(${a}/${b})`;
+GEN.sat['Exponents and radicals']=()=>{
+  if(coin()){let m,n;do{m=ri(1,7);n=ri(2,4)}while(gcd(m,n)!==1);const root=['','','√','∛','∜'][n];
+    return satQ({q:`${root}${m===1?'x':`(x${supN(m)})`}`,ask:'For x > 0, which expression is equivalent?',ans:0,show:xe(m,n),
+      steps:[`A root is a fractional exponent: the ${n===2?'square':n===3?'cube':'fourth'} root means the power 1/${n}`,`${root}${m===1?'x':`(x${supN(m)})`} = x^(${m}/${n})`],tip:'The power goes on top of the fraction and the root goes on the bottom.'},
+      [[m===1?`x${supN(n)}`:xe(n,m),'The index of the root goes in the denominator.'],[`x${supN(m*n)}`,'A root means a fractional exponent, not multiplying.'],[`x^(−${m}/${n})`,'A negative exponent means a reciprocal, not a root.']],{mc:true})}
+  const [b,t,p,e1,e2]=pick([[4,8,2,2,3],[8,4,2,3,2],[9,27,3,2,3],[27,9,3,3,2],[16,8,2,4,3],[4,32,2,2,5],[25,125,5,2,3],[8,16,2,3,4]]);
+  return satQ({q:`${b}ˣ = ${t}`,ask:'What is the value of x?',ans:e2/e1,steps:[`Write both sides with base ${p}: ${b} = ${p}${supN(e1)} and ${t} = ${p}${supN(e2)}`,`${p}${supN(e1)}ˣ = ${p}${supN(e2)}, so ${e1}x = ${e2}`,`x = ${nf(e2/e1)}`],tip:'Rewrite both sides with the same base, then set the exponents equal.'},
+    [[e1/e2,`Set the exponents equal: ${e1}x = ${e2}, so x = ${e2}/${e1}.`],[t/b,'You can’t divide the numbers; rewrite both sides with the same base.'],[e2-e1,'']])};
+HARD.sat['Exponents and radicals']=()=>{const P0=pick([200,500,1200,2500,8000]),r=pick([3,4,5,6,8,10,12,15,20,25]),grow=coin(),fac=+(grow?1+r/100:1-r/100).toFixed(2),
+    thing=grow?pick(['The population of a town','The number of members of an online club','The value of a savings account']):pick(['The value of a car','The number of fish in a pond','The amount of a medicine in the bloodstream']);
+  if(coin())return satQ({story:`${thing} is ${com(P0)} and ${grow?'increases':'decreases'} by ${r}% each year.`,ask:'Which function gives the amount after t years?',ans:0,show:`f(t) = ${com(P0)}(${fac})ᵗ`,
+    steps:[`${grow?'Increasing':'Decreasing'} by ${r}% means multiplying by 1 ${grow?'+':'−'} ${r/100} = ${fac} each year`,`f(t) = ${com(P0)}(${fac})ᵗ`],tip:'Growth by r% each year: multiply by (1 + r). Decay: multiply by (1 − r).'},
+    [[`f(t) = ${com(P0)}(${+(r/100).toFixed(2)})ᵗ`,`Multiplying by ${r/100} would keep only ${r}% each year.`],[`f(t) = ${com(P0)}(${+(grow?1-r/100:1+r/100).toFixed(2)})ᵗ`,`That model ${grow?'decreases':'increases'} each year.`],[`f(t) = ${com(P0)} ${grow?'+':'−'} ${com(P0*r/100)}t`,'A fixed percent each year is exponential, not linear.']],{mc:true});
+  const t=pick([2,3,4,5]),v=Math.round(P0*fac**t);
+  return satQ({tol:.51,story:`${thing} is ${com(P0)} and ${grow?'increases':'decreases'} by ${r}% each year.`,ask:`What is it after ${t} years, to the nearest whole number?`,ans:v,show:com(v),
+    steps:[`Multiply by ${fac} each year: ${com(P0)}(${fac})${supN(t)}`,`${com(P0)} × ${+(fac**t).toFixed(5)} ≈ ${com(v)}`],tip:'Percent change each year compounds: use a power, not repeated adding.'},
+    [[Math.round(P0*(1+(grow?1:-1)*r*t/100)),`Percent change compounds; it isn’t ${r}% of the original every year.`],[Math.round(P0*fac**(t-1)),`That is after ${t-1} years.`],[Math.round(P0*fac**t*(grow?1.1:0.9)),'']],{f:com})};
+
+EASY.sat['Functions']=()=>{const a=nz(-3,3),b=nz(-6,6),k=nz(-4,4),v=a*k*k+b;
+  return satQ({q:`f(x) = ${C(a)}x²${S(b)}`,ask:`What is f(${N(k)})?`,ans:v,steps:[`Replace x with ${N(k)}: f(${N(k)}) = ${N(a)}(${N(k)})²${S(b)}`,`= ${N(a)}(${k*k})${S(b)} = ${N(v)}`],tip:'Put the input in parentheses before squaring, especially when it is negative.'},
+    [[k<0?-a*k*k+b:2*a*k+b,k<0?'A negative number squared is positive.':'x² means x times x, not 2x.'],[a*k+b,'Square the input first.'],[a*k*k-b,'Check the sign of the constant.']])};
+GEN.sat['Functions']=()=>{
+  if(coin()){const m=nz(-6,8),b=nz(-9,9),x=nz(-7,9),y=m*x+b;
+    return satQ({q:`f(x) = ${C(m)}x${S(b)}`,ask:`If f(p) = ${N(y)}, what is the value of p?`,ans:x,steps:[`${C(m)}p${S(b)} = ${N(y)}`,`${C(m)}p = ${N(y-b)}`,`p = ${N(x)}`],tip:'f(p) = number means the output is given; solve for the input.'},
+      [[m*y+b,`That is f(${N(y)}); here ${N(y)} is the output, not the input.`],[(y+b)/m,`Undo the ${b>0?'+':'−'} ${Math.abs(b)} first.`],[-x,'']])}
+  const a=nz(-4,5),b=nz(-6,6),c=nz(-5,5),k=nz(-3,3),g=k*k+c,fg=a*g+b,gf=(a*k+b)**2+c;
+  return satQ({q:`f(x) = ${C(a)}x${S(b)}<br>g(x) = x²${S(c)}`,ask:`What is f(g(${N(k)}))?`,ans:fg,steps:[`Inside first: g(${N(k)}) = (${N(k)})²${S(c)} = ${N(g)}`,`f(${N(g)}) = ${N(a)}(${N(g)})${S(b)} = ${N(fg)}`],tip:'Work from the inside out.'},
+    [[gf,'That is g(f(x)). Work from the inside out: g first.'],[g,'That is only g; now put it into f.'],[(a*k+b)+g,'Composition means plugging one function into the other, not adding.']])};
+HARD.sat['Functions']=()=>{const m=nz(-5,6),b=nz(-12,12),x1=ri(1,4),x2=x1+ri(2,4),x3=pick([0,x2+ri(1,5),-ri(1,3)]),y1=m*x1+b,y2=m*x2+b,y3=m*x3+b;
+  return satQ({story:`For the linear function f, f(${x1}) = ${N(y1)} and f(${x2}) = ${N(y2)}.`,ask:`What is f(${N(x3)})?`,ans:y3,
+    steps:[`Slope = (${N(y2)} − ${P(y1)}) ÷ (${x2} − ${x1}) = ${N(m)}`,`${N(y1)} = ${N(m)}(${x1}) + b, so b = ${N(b)}`,`f(${N(x3)}) = ${N(m)}(${N(x3)})${S(b)} = ${N(y3)}`],tip:'Two points give the slope; either point then gives the intercept.'},
+    [[m,'That is the slope. Now build f(x) and plug in.'],[m*x3,`Include the y-intercept, ${N(b)}.`],[(y2-y1)*x3+b,`Divide the change in f by the change in x (${x2-x1}) to get the slope.`]])};
+
+/* ---------- problem solving and data ---------- */
+EASY.sat['Ratios and percents']=()=>{
+  if(coin()){const n=pick([4,5,6,8,10,12]),u=pick([0.25,0.5,0.75,1.25,1.5,2]);let m;do{m=pick([3,7,9,14,15,18,20])}while(m===n);
+    return satQ({story:`${n} notebooks cost ${usd(n*u)}.`,ask:`At the same price per notebook, how much do ${m} notebooks cost?`,ans:m*u,show:usd(m*u),steps:[`One notebook: ${usd(n*u)} ÷ ${n} = ${usd(u)}`,`${m} × ${usd(u)} = ${usd(m*u)}`],tip:'Find the unit price first, then scale up.'},
+      [[n*u*m,'Find the price of one notebook first.'],[m*u+u,''],[(m-n)*u,'That is only the cost of the extra notebooks.']],{f:usd})}
+  const X=pick([20,24,30,40,45,60,80,120]),p=pick([10,15,20,25,30,40,50]),sale=X*(1-p/100);
+  return satQ({story:`A jacket normally costs $${X}. It is on sale for ${p}% off.`,ask:'What is the sale price?',ans:sale,show:usd(sale),steps:[`Discount: ${p}% of ${X} = ${usd(X*p/100)}`,`Sale price: ${X} − ${usd(X*p/100)} = ${usd(sale)}`],tip:'Or in one step: the sale price is (100 − p)% of the original.'},
+    [[X*p/100,'That is the discount, not the sale price.'],[X-p,`Take ${p}% of the price, not ${p} dollars.`],[X*(1+p/100),'A discount lowers the price.']],{f:usd})};
+GEN.sat['Ratios and percents']=()=>{
+  if(coin()){const o=pick([20,40,50,80,120,200,250]),p=pick([5,10,15,20,25,30,40,50,60,75]),up=coin(),n=o*(1+(up?1:-1)*p/100);
+    return satQ({story:`The price of a ${pick(['concert ticket','video game','pair of shoes','bike helmet'])} changed from $${o} to ${usd(n)}.`,ask:`By what percent did the price ${up?'increase':'decrease'}?`,ans:p,show:`${p}%`,
+      steps:[`Change: ${usd(n)} − $${o} = ${usd(n-o).replace('$-','−$')}`,`Percent change = change ÷ original = ${usd(Math.abs(n-o))} ÷ $${o}`,`= ${p}%`],tip:'Percent change always divides by the original amount.'},
+      [[Math.abs(n-o)/n*100,'Divide by the original price, not the new one.'],[Math.abs(n-o),'That is the change in dollars, not the percent.'],[n/o*100,'That is the new price as a percent of the old one.']],{f:pct})}
+  const v=pick([15,30,45,60,75]),fps=v*22/15;
+  return satQ({story:`A car travels at ${v} miles per hour.`,ask:'What is its speed in feet per second? (1 mile = 5,280 feet)',ans:fps,
+    steps:[`${v} miles per hour = ${com(v*5280)} feet per 3,600 seconds`,`${com(v*5280)} ÷ 3,600 = ${fps}`],tip:'Write the units as fractions and multiply so the unwanted units cancel.'},
+    [[v*5280/60,'An hour is 3,600 seconds, not 60.'],[v*3600/5280,'Multiply by 5,280 feet per mile and divide by 3,600 seconds per hour.'],[v*5280,'Also convert hours to seconds.']])};
+HARD.sat['Ratios and percents']=()=>{
+  if(coin()){let a,b;do{a=pick([10,20,25,30,40,50]);b=pick([10,20,25,30,40,50])}while(a===b);const fin=(1+a/100)*(1-b/100)*100;
+    return satQ({story:`A store raised the price of a TV by ${a}%. Later it lowered the new price by ${b}%.`,ask:'The final price is what percent of the original price?',ans:fin,show:pct(fin),
+      steps:[`Raising by ${a}% multiplies by ${1+a/100}`,`Lowering by ${b}% multiplies by ${1-b/100}`,`${1+a/100} × ${1-b/100} = ${+(fin/100).toFixed(4)}, which is ${pct(fin)}`],tip:'Percent changes in a row multiply. They never just add.'},
+      [[100+a-b,'Percent changes multiply; they don’t simply add.'],[(1-a/100)*(1+b/100)*100,'The increase came first, then the decrease.'],[100-(a+b)/2,'']],{f:pct})}
+  const d=pick([10,15,20,25,30,40]),O=pick([40,60,80,120,160,200,240]),Sp=O*(1-d/100);
+  return satQ({story:`After a ${d}% discount, a guitar costs ${usd(Sp)}.`,ask:'What was the original price?',ans:O,show:usd(O),steps:[`Sale price = ${1-d/100} × original`,`Original = ${usd(Sp)} ÷ ${1-d/100}`,`= ${usd(O)}`],tip:'The discount was taken from the original price, so divide instead of adding the percent back.'},
+    [[Sp*(1+d/100),`The ${d}% was taken off the original price, not the sale price, so adding ${d}% back doesn’t work.`],[Sp+d,`${d}% isn’t ${d} dollars.`],[Sp*d/100,'']],{f:usd})};
+
+const sum=a=>a.reduce((s,x)=>s+x,0),median=a=>{const s=[...a].sort((x,y)=>x-y),n=s.length;return n%2?s[(n-1)/2]:(s[n/2-1]+s[n/2])/2};
+EASY.sat['Statistics']=()=>{const n=pick([5,7]);let a;do{a=Array.from({length:n},()=>ri(2,30))}while(sum(a)%n);const mean=sum(a)/n,med=median(a),rg=Math.max(...a)-Math.min(...a),list=a.join(', ');
+  if(coin())return satQ({q:list,ask:'What is the mean of the data?',ans:mean,steps:[`Sum: ${a.join(' + ')} = ${sum(a)}`,`Mean = ${sum(a)} ÷ ${n} = ${mean}`],tip:'Mean = total ÷ how many.'},
+    [[med,'That is the median. The mean is the sum divided by the count.'],[sum(a),`Divide the sum by the number of values, ${n}.`],[rg,'That is the range.']]);
+  return satQ({q:list,ask:'What is the median of the data?',ans:med,steps:[`In order: ${[...a].sort((x,y)=>x-y).join(', ')}`,`The middle value is ${med}`],tip:'Always put the data in order before finding the middle.'},
+    [[a[(n-1)/2],'Put the numbers in order before finding the middle.'],[mean,'That is the mean.'],[rg,'That is the range.']])};
+GEN.sat['Statistics']=()=>{
+  if(coin()){const n=pick([4,5,6]);let a,t,x;do{a=Array.from({length:n},()=>ri(65,100));t=ri(75,92);x=t*(n+1)-sum(a)}while(x<50||x>100);
+    return satQ({story:`${who()} has test scores of ${a.join(', ')}.`,ask:`What score on the next test would make the mean of all ${n+1} tests exactly ${t}?`,ans:x,
+      steps:[`All ${n+1} tests must total ${t} × ${n+1} = ${t*(n+1)}`,`The first ${n} total ${sum(a)}`,`Next score = ${t*(n+1)} − ${sum(a)} = ${x}`],tip:'Work with totals: mean × count = sum.'},
+      [[t*n-sum(a),`Use all ${n+1} tests: the total must be ${t} × ${n+1}.`],[t,`The other scores don’t average ${t}, so the next score has to make up the difference.`],[x+n,'']])}
+  const n=pick([6,8]);const a=Array.from({length:n},()=>ri(1,40)),med=median(a),s=[...a].sort((x,y)=>x-y);
+  return satQ({q:a.join(', '),ask:'What is the median of the data?',ans:med,steps:[`In order: ${s.join(', ')}`,`With ${n} values, the median is the mean of the middle two: (${s[n/2-1]} + ${s[n/2]}) ÷ 2`,`Median = ${N(med)}`],tip:'An even number of values has two middles: average them.'},
+    [[s[n/2-1],'With an even count, average the two middle values.'],[(a[n/2-1]+a[n/2])/2,'Put the numbers in order first.'],[sum(a)/n,'That is the mean.']],{f:v=>N(r2(v))})};
+const MOVE=v=>Math.abs(v)<1e-9?'stays the same':v<0?'decreases':'increases';
+HARD.sat['Statistics']=()=>{
+  if(coin()){let n1,n2,m1,m2;do{n1=pick([10,12,15,20,25]);n2=pick([5,8,10,15,30]);m1=ri(70,90);m2=ri(70,90)}while(m1===m2||n1===n2);const cm=r1((n1*m1+n2*m2)/(n1+n2));
+    return satQ({tol:.051,story:`A class of ${n1} students had a mean score of ${m1} on a test. Another class of ${n2} students had a mean score of ${m2}.`,ask:'What is the mean score of all the students combined, to the nearest tenth?',ans:cm,
+      steps:[`Total points: ${n1} × ${m1} + ${n2} × ${m2} = ${n1*m1+n2*m2}`,`Total students: ${n1+n2}`,`Mean = ${n1*m1+n2*m2} ÷ ${n1+n2} ≈ ${cm}`],tip:'Groups of different sizes can’t be averaged directly. Add up totals first.'},
+      [[(m1+m2)/2,'The classes are different sizes, so weight each mean by its size.'],[r1((m1*n2+m2*n1)/(n1+n2)),'Each mean goes with its own class size.'],[Math.round(cm)+1,'']],{f:v=>String(r1(v))})}
+  let a,out,before,after;do{a=Array.from({length:6},()=>ri(10,30));out=ri(70,120)}while(new Set(a).size<5);
+  const all=[...a,out],dm=sum(a)/6-sum(all)/7,dmed=median(a)-median(all),right=`The mean ${MOVE(dm)} and the median ${MOVE(dmed)}.`,
+    opts=['decreases','increases','stays the same'].flatMap(x=>['decreases','increases','stays the same'].map(y=>`The mean ${x} and the median ${y}.`)).filter(s=>s!==right);
+  return satQ({story:`A data set has the values ${all.join(', ')}. The value ${out} is removed.`,ask:'Which statement is true?',ans:0,show:right,
+    steps:[`Mean before: ${sum(all)} ÷ 7 ≈ ${r2(sum(all)/7)}; after: ${sum(a)} ÷ 6 ≈ ${r2(sum(a)/6)}`,`Median before: ${nf(median(all))}; after: ${nf(median(a))}`,right],tip:'An outlier pulls the mean a lot; the median barely moves.'},
+    shuf(opts).slice(0,3).map(s=>[s,!s.startsWith(`The mean ${MOVE(dm)} `)?'Check the mean: removing a very large value pulls it down.':'The mean part is right. Recheck the median: find the middle value before and after.']),{mc:true})};
+
+const TWOWAY=[{u:'students',what:'were asked whether they play a sport',r:['Grade 10','Grade 11'],c:['Plays a sport','Doesn’t play']},
+  {u:'people',what:'were asked which pet they prefer',r:['Adults','Teens'],c:['Cats','Dogs']},
+  {u:'customers',what:'were asked how they paid',r:['Weekday','Weekend'],c:['Card','Cash']},
+  {u:'seeds',what:'were planted in two kinds of soil',r:['Soil A','Soil B'],c:['Sprouted','Didn’t sprout']}];
+function twoWay(){const t=pick(TWOWAY),v=[[ri(8,60),ri(8,60)],[ri(8,60),ri(8,60)]],R=v.map(sum),Cc=[v[0][0]+v[1][0],v[0][1]+v[1][1]],T=sum(R);
+  const html=`<div class="tabwrap"><table class="dtab"><tr><th></th><th>${t.c[0]}</th><th>${t.c[1]}</th><th>Total</th></tr>${t.r.map((r,i)=>`<tr><td>${r}</td><td>${v[i][0]}</td><td>${v[i][1]}</td><td>${R[i]}</td></tr>`).join('')}<tr><td>Total</td><td>${Cc[0]}</td><td>${Cc[1]}</td><td>${T}</td></tr></table></div>`;
+  return{...t,v,R,Cc,T,story:`${T} ${t.u} ${t.what}. The table shows the results.`,fig:html}}
+const prob=(n,d)=>({ans:n/d,show:fr(n,d),tol:.0006,frac:true});
+EASY.sat['Probability and tables']=()=>{const t=twoWay(),j=ri(0,1);
+  return satQ({story:t.story,fig:t.fig,ask:`If one of the ${t.u} is chosen at random, what is the probability that it is in the “${t.c[j]}” column?`,...prob(t.Cc[j],t.T),
+    steps:[`Favorable: the “${t.c[j]}” total is ${t.Cc[j]}`,`Possible: all ${t.T} ${t.u}`,`Probability = ${t.Cc[j]}/${t.T} = ${fr(t.Cc[j],t.T)}`],tip:'Probability = favorable ÷ total. Totals are usually in the last row or column.'},
+    [[t.Cc[1-j]/t.T,`That is the “${t.c[1-j]}” column.`],[t.Cc[j]/t.Cc[1-j],`Divide by the total, ${t.T}, not by the other column.`],[t.v[0][j]/t.T,'Use the column total, not one cell.']])};
+GEN.sat['Probability and tables']=()=>{const t=twoWay(),i=ri(0,1),j=ri(0,1),cell=t.v[i][j];
+  return satQ({story:t.story,fig:t.fig,ask:`If one of the ${t.u} in “${t.r[i]}” is chosen at random, what is the probability that it is in “${t.c[j]}”?`,...prob(cell,t.R[i]),
+    steps:[`Only the “${t.r[i]}” row matters: ${t.R[i]} ${t.u}`,`Of those, ${cell} are in “${t.c[j]}”`,`Probability = ${cell}/${t.R[i]} = ${fr(cell,t.R[i])}`],tip:'“Given” or “of the …” shrinks the total to just that group.'},
+    [[cell/t.T,`Only the ${t.r[i]} row counts, so divide by ${t.R[i]}, not ${t.T}.`],[cell/t.Cc[j],`Divide by the ${t.r[i]} total, not the ${t.c[j]} total.`],[t.R[i]/t.T,'']])};
+HARD.sat['Probability and tables']=()=>{const t=twoWay(),i=ri(0,1),j=ri(0,1),cell=t.v[i][j];
+  if(coin())return satQ({story:t.story,fig:t.fig,ask:`Of the ${t.u} in “${t.c[j]}”, what fraction are in “${t.r[i]}”?`,...prob(cell,t.Cc[j]),
+    steps:[`Only the “${t.c[j]}” column matters: ${t.Cc[j]} ${t.u}`,`Of those, ${cell} are in “${t.r[i]}”`,`${cell}/${t.Cc[j]} = ${fr(cell,t.Cc[j])}`],tip:'Read the question for which group is the whole. That total goes on the bottom.'},
+    [[cell/t.R[i],`The group is “${t.c[j]}”, so divide by its total, ${t.Cc[j]}.`],[cell/t.T,'Use the column total, not the grand total.'],[t.Cc[j]/t.T,'']]);
+  const n=t.R[i]+t.Cc[j]-cell;
+  return satQ({story:t.story,fig:t.fig,ask:`If one of the ${t.u} is chosen at random, what is the probability that it is in “${t.r[i]}” or in “${t.c[j]}” (or both)?`,...prob(n,t.T),
+    steps:[`“${t.r[i]}” total ${t.R[i]} plus “${t.c[j]}” total ${t.Cc[j]} counts the overlap (${cell}) twice`,`${t.R[i]} + ${t.Cc[j]} − ${cell} = ${n}`,`Probability = ${n}/${t.T} = ${fr(n,t.T)}`],tip:'For “or”, add the two groups and subtract the overlap once.'},
+    [[Math.min(1,(t.R[i]+t.Cc[j])/t.T),'The overlap got counted twice; subtract it once.'],[cell/t.T,'That is “and” (both), not “or”.'],[t.R[i]/t.T,'']])};
+
+/* ---------- geometry and trigonometry ---------- */
+const deg=v=>`${nf(v)}°`;
+EASY.sat['Geometry']=()=>{
+  if(coin()){let a,b;do{a=ri(25,95);b=ri(25,95)}while(a+b>=165);const c=180-a-b;
+    return satQ({story:`Two angles of a triangle measure ${a}° and ${b}°.`,ask:'What is the measure of the third angle, in degrees?',ans:c,show:deg(c),steps:['The angles of a triangle add up to 180°',`180 − ${a} − ${b} = ${c}°`],tip:'Triangles: 180°. Straight lines: 180°. Around a point: 360°.'},
+      [[360-a-b,'The angles of a triangle add up to 180°, not 360°.'],[a+b,'Subtract both angles from 180°.'],[180-a,'Subtract both given angles.']],{f:deg})}
+  const l=ri(6,25),w=ri(3,l-1),Pm=2*(l+w);
+  return satQ({story:`A rectangle has a perimeter of ${Pm} centimeters and a length of ${l} centimeters.`,ask:'What is its width, in centimeters?',ans:w,steps:[`Perimeter = 2(length + width): ${Pm} = 2(${l} + w)`,`${Pm/2} = ${l} + w`,`w = ${w}`],tip:'The perimeter goes around all four sides, so each side counts twice.'},
+    [[Pm-2*l,'Two widths make up that amount, so divide by 2.'],[Pm/2,'Subtract the length after halving the perimeter.'],[Pm-l,'The perimeter includes each side twice.']])};
+const TRIP=[[3,4,5],[5,12,13],[8,15,17],[7,24,25],[20,21,29],[9,40,41]];
+GEN.sat['Geometry']=()=>{
+  if(coin()){const [a0,b0,c0]=pick(TRIP),k=pick([1,1,2,3]),a=a0*k,b=b0*k,c=c0*k,hyp=coin();
+    if(hyp)return satQ({fig:figRT(a,b,a,b,'?',''),story:`A right triangle has legs of length ${a} and ${b}.`,ask:'What is the length of the hypotenuse?',ans:c,steps:[`a² + b² = c²: ${a*a} + ${b*b} = c²`,`c² = ${a*a+b*b}`,`c = ${c}`],tip:'Memorize common triples: 3-4-5, 5-12-13, 8-15-17, and their multiples.'},
+      [[a+b,'Use a² + b² = c²; the sides don’t just add.'],[a*a+b*b,'Take the square root at the end.'],[c+k,'']]);
+    return satQ({fig:figRT(a,b,a,'?',c,''),story:`A right triangle has a hypotenuse of length ${c} and one leg of length ${a}.`,ask:'What is the length of the other leg?',ans:b,steps:[`a² + b² = c²: ${a*a} + b² = ${c*c}`,`b² = ${c*c-a*a}`,`b = ${b}`],tip:'For a missing leg, subtract the squares.'},
+      [[Math.sqrt(c*c+a*a),'For a leg, subtract the squares instead of adding.'],[c-a,'Use the Pythagorean theorem; the sides don’t just subtract.'],[c*c-a*a,'Take the square root at the end.']])}
+  let AB,DE,BC;do{AB=ri(3,12);DE=AB*pick([1.5,2,2.5,3]);BC=ri(4,15)}while(!Number.isInteger(DE)||!Number.isInteger(BC*DE/AB)||BC===AB);const EF=BC*DE/AB;
+  return satQ({story:`Triangle ABC is similar to triangle DEF, with A, B and C corresponding to D, E and F. AB = ${AB}, BC = ${BC} and DE = ${DE}.`,ask:'What is the length of EF?',ans:EF,
+    steps:[`Scale factor: DE ÷ AB = ${DE} ÷ ${AB} = ${nf(DE/AB)}`,`EF = BC × ${nf(DE/AB)} = ${BC} × ${nf(DE/AB)}`,`EF = ${nf(EF)}`],tip:'Match corresponding sides in the same order as the letters.'},
+    [[BC*AB/DE,'The scale factor is upside down: DEF is the bigger triangle.'],[BC+DE-AB,'Similar shapes scale by multiplying, not adding.'],[DE,'']])};
+HARD.sat['Geometry']=()=>{
+  if(coin()){const r=ri(2,7),h=ri(3,12),dia=coin(),V=r*r*h,picks=[[`${2*r*h}π`,'Square the radius: V = πr²h.'],[`${r*h}π`,'Square the radius: V = πr²h.'],[`${2*r*(r+h)}π`,'That is the surface area, not the volume.']];
+    if(dia)picks.unshift([`${4*r*r*h}π`,`Use the radius, ${r}, not the diameter.`]);if(V%3===0)picks.push([`${V/3}π`,'That is the volume of a cone. A cylinder has no 1/3.']);
+    return satQ({tol:.06,story:`A cylinder has a ${dia?`diameter of ${2*r}`:`radius of ${r}`} centimeters and a height of ${h} centimeters.`,ask:'What is its volume, in cubic centimeters?',ans:V*Math.PI,show:`${V}π`,
+      steps:['V = πr²h',dia?`The radius is half the diameter: r = ${r}`:'',`V = π(${r})²(${h}) = ${V}π`],tip:'Check whether you were given the radius or the diameter. The reference sheet has the formula.'},picks,{mc:true})}
+  const k=pick([2,3,4]),kw=['','','doubled','tripled','quadrupled'][k];
+  return satQ({story:pick([`Each edge of a cube is ${kw}.`,`The radius of a sphere is ${kw}.`,`The length, width and height of a box are all ${kw}.`]),ask:'By what factor is its volume multiplied?',ans:k**3,
+    steps:[`Volume uses three lengths multiplied together`,`Each length is multiplied by ${k}, so the volume is multiplied by ${k} × ${k} × ${k}`,`= ${k**3}`],tip:'Scale lengths by k: areas by k², volumes by k³.'},
+    [[k,'Volume grows by the cube of the scale factor.'],[k*k,'That is how area changes; volume uses the cube.'],[3*k,'Multiply the factor by itself three times; don’t multiply by 3.']])};
+
+const pix=(n,d)=>piStr(n,d)==='π'?'π':piStr(n,d);
+EASY.sat['Circles']=()=>{const r=ri(2,12),dia=coin(),area=coin(),val=area?r*r:2*r;
+  const picks=area?[[`${2*r}π`,'That is the circumference. Area is πr².'],[`${r}π`,'Square the radius.'],[`${4*r*r}π`,`Use the radius, ${r}, not the diameter.`]]:[[`${r*r}π`,'That is the area. Circumference is 2πr.'],[`${r}π`,'Circumference is 2πr, or π times the diameter.'],[`${4*r}π`,`Use the radius, ${r}, not the diameter, in 2πr.`]];
+  return satQ({tol:.06,story:`A circle has a ${dia?`diameter of ${2*r}`:`radius of ${r}`}.`,ask:`What is its ${area?'area':'circumference'}?`,ans:val*Math.PI,show:`${val}π`,
+    steps:[dia?`Radius = ${2*r} ÷ 2 = ${r}`:'',area?`A = πr² = π(${r})²`:`C = 2πr = 2π(${r})`,`= ${val}π`],tip:'Area πr² (square units); circumference 2πr (length). Answers are often left in terms of π.'},picks,{mc:true})};
+GEN.sat['Circles']=()=>{const th=pick([30,45,60,90,120,135,150,240,270]),r=pick([2,3,4,6,8,9,10,12]);
+  if(coin())return satQ({tol:.06,story:`A circle has a radius of ${r}. A central angle of ${th}° cuts off an arc.`,ask:'What is the length of the arc?',ans:th*r/180*Math.PI,show:pix(th*r,180),
+    steps:['Arc length = (angle ÷ 360) × 2πr',`= (${th}/360) × 2π(${r})`,`= ${pix(th*r,180)}`],tip:'An arc is a fraction of the circumference; a sector is a fraction of the area.'},
+    [[pix(th*r*r,360),'That is the sector area. Arc length uses the circumference, 2πr.'],[pix(2*r,1),'That is the whole circumference; take the fraction for the angle.'],[pix(th*r,360),'Use 2πr, not πr.']],{mc:true});
+  return satQ({tol:.06,story:`A circle has a radius of ${r}. A sector has a central angle of ${th}°.`,ask:'What is the area of the sector?',ans:th*r*r/360*Math.PI,show:pix(th*r*r,360),
+    steps:['Sector area = (angle ÷ 360) × πr²',`= (${th}/360) × π(${r})²`,`= ${pix(th*r*r,360)}`],tip:'Find what fraction of the whole circle the angle is, then take that fraction of the area.'},
+    [[pix(th*r,180),'That is the arc length. Sector area uses πr².'],[pix(r*r,1),'That is the whole circle; take the fraction for the angle.'],[pix(th*r*r,180),'Area is πr², not 2πr².']],{mc:true})};
+HARD.sat['Circles']=()=>{const h=nz(-6,6),k=nz(-6,6),r=ri(2,9),D=-2*h,E=-2*k,F=h*h+k*k-r*r,eq=`x² + y²${Sx(D)}${Sx(E,'y')}${F?S(F):''} = 0`;
+  const steps=[`Group and complete the square: (x²${Sx(D)} + ${h*h}) + (y²${Sx(E,'y')} + ${k*k}) = ${N(-F)} + ${h*h} + ${k*k}`,`(x${S(-h)})² + (y${S(-k)})² = ${r*r}`];
+  if(coin())return satQ({q:eq,ask:'The equation defines a circle in the xy-plane. What is its radius?',ans:r,steps:[...steps,`r = √${r*r} = ${r}`],tip:'Completing the square turns the general form into (x − h)² + (y − k)² = r².'},
+    [[r*r,'That is r². Take the square root.'],[Math.sqrt(Math.abs(F))%1?r+1:Math.sqrt(Math.abs(F)),'Complete the square; the constant term alone isn’t r².'],[Math.abs(h)+Math.abs(k),'']]);
+  const pt=(a,b)=>`(${N(a)}, ${N(b)})`;
+  return satQ({q:eq,ask:'The equation defines a circle in the xy-plane. What are the coordinates of its center?',ans:0,show:pt(h,k),steps:[...steps,`Center: ${pt(h,k)}`],tip:'In (x − h)² + (y − k)² = r², the center is (h, k): the signs flip.'},
+    [[pt(-h,-k),'In (x − h)², the center coordinate is h, so the sign flips.'],[pt(D,E),'Complete the square: the center is half of those coefficients, with the opposite sign.'],[pt(k,h),'']],{mc:true})};
+
+EASY.sat['Right triangles and trig']=()=>{const [a0,b0,c0]=pick(TRIP),sw=coin(),a=sw?b0:a0,b=sw?a0:b0,c=c0,fn=pick(['sin','cos','tan']),v={sin:[a,c],cos:[b,c],tan:[a,b]}[fn];
+  const wr={sin:[[b/c,'That is cosine: adjacent over hypotenuse.'],[a/b,'That is tangent: opposite over adjacent.'],[c/a,'Upside down: sine is opposite over hypotenuse.']],
+    cos:[[a/c,'That is sine: opposite over hypotenuse.'],[a/b,'That is tangent.'],[c/b,'Upside down: cosine is adjacent over hypotenuse.']],
+    tan:[[b/a,'Upside down: tangent is opposite over adjacent.'],[a/c,'That is sine.'],[b/c,'That is cosine.']]}[fn];
+  return satQ({fig:figRT(b,a,b,a,c,'A',1),story:`In right triangle ABC, angle C is 90°, BC = ${a}, AC = ${b} and AB = ${c}.`,ask:`What is ${fn} A?`,ans:v[0]/v[1],show:fr(v[0],v[1]),tol:.0006,frac:true,
+    steps:[`From angle A: opposite = BC = ${a}, adjacent = AC = ${b}, hypotenuse = AB = ${c}`,`${fn} A = ${fn==='sin'?'opposite/hypotenuse':fn==='cos'?'adjacent/hypotenuse':'opposite/adjacent'} = ${v[0]}/${v[1]}`],tip:'SOH CAH TOA, always from the point of view of the angle you’re asked about.'},wr)};
+GEN.sat['Right triangles and trig']=()=>{
+  if(coin()){const k=ri(10,80),f=coin();
+    return satQ({story:`In a right triangle, ${f?`sin(x°) = cos(${k}°)`:`cos(x°) = sin(${k}°)`}, and 0 < x < 90.`,ask:'What is the value of x?',ans:90-k,steps:['The sine of an angle equals the cosine of its complement',`x + ${k} = 90`,`x = ${90-k}`],tip:'sin x° = cos(90° − x°). The two acute angles of a right triangle are complements.'},
+      [[k,'Sine and cosine are equal for complementary angles, which add to 90°.'],[180-k,'Complementary angles add to 90°, not 180°.'],[90+k,'']])}
+  const t=coin(),s=ri(2,9)*(t?2:1);
+  if(t){const sh=s/2;return satQ({tol:.01,story:`In a 30°-60°-90° triangle, the hypotenuse has length ${s}.`,ask:'What is the length of the longer leg?',ans:sh*Math.sqrt(3),show:`${sh}√3`,
+    steps:['The sides of a 30°-60°-90° triangle are in the ratio 1 : √3 : 2',`Short leg = ${s} ÷ 2 = ${sh}`,`Long leg = ${sh}√3`],tip:'30-60-90: short leg x, long leg x√3, hypotenuse 2x.'},
+    [[`${sh}`,'That is the shorter leg, across from the 30° angle.'],[`${s}√3`,'Halve the hypotenuse first, then multiply by √3.'],[`${sh}√2`,'√2 belongs to 45°-45°-90° triangles.']],{mc:true})}
+  return satQ({tol:.01,story:`An isosceles right triangle has legs of length ${s}.`,ask:'What is the length of the hypotenuse?',ans:s*Math.SQRT2,show:`${s}√2`,
+    steps:['The sides of a 45°-45°-90° triangle are in the ratio 1 : 1 : √2',`Hypotenuse = ${s}√2`],tip:'45-45-90: legs x, hypotenuse x√2.'},
+    [[`${2*s}`,'The legs don’t just add; use the Pythagorean theorem or x√2.'],[`${s}√3`,'√3 belongs to 30°-60°-90° triangles.'],[`${s*s*2}`,'That is the hypotenuse squared.']],{mc:true})};
+HARD.sat['Right triangles and trig']=()=>{
+  if(coin()){const [a,b,c]=pick(TRIP);return satQ({story:`In a right triangle, angle A is acute and cos A = ${b}/${c}.`,ask:'What is tan A?',ans:a/b,show:fr(a,b),tol:.0006,frac:true,
+    steps:[`cos A = adjacent/hypotenuse, so adjacent = ${b} and hypotenuse = ${c}`,`Opposite = √(${c}² − ${b}²) = √${c*c-b*b} = ${a}`,`tan A = opposite/adjacent = ${a}/${b}`],tip:'Sketch the triangle, label the two sides you know, and find the third with the Pythagorean theorem.'},
+    [[b/a,'Upside down: tangent is opposite over adjacent.'],[a/c,'That is sin A.'],[c/b,'']])}
+  const th=pick([30,45,60,120,135,150,210,225,240,270,300,315,330]);
+  return satQ({tol:.01,q:`${th}°`,ask:'What is this angle measure in radians?',ans:th*Math.PI/180,show:pix(th,180),steps:['Multiply degrees by π/180',`${th} × π/180 = ${pix(th,180)}`],tip:'180° = π radians. That one fact does every conversion.'},
+    [[pix(th,360),'180° is π radians, not 360°.'],[pix(180,th),'Multiply by π/180; don’t divide.'],[pix(2*th,180),'']],{mc:true})};
+
 /* ================= word problems ================= */
 const who=()=>pick(['Maya','Jordan','Priya','Leo','Sofia','Marcus','Aiden','Chloe','Omar','Emma','Nia','Diego']);
 function figFerris(D,c){const s=150/(c+D/2),Rr=D/2*s,cy=175-c*s,cx=150;let b=phys.ground(20,300,175)+fig.ln(cx-30,175,cx,cy,'s thin')+fig.ln(cx+30,175,cx,cy,'s thin')+fig.ci(cx,cy,Rr,'s');
@@ -1899,7 +2229,30 @@ chem:[
 ['Specific heat','Heat needed to raise 1 g of a substance by 1 °C.','Water: 4.18 J/(g·°C)'],
 ['STP','Standard temperature and pressure: 0 °C (273 K) and 1 atm.','1 mol of gas takes up 22.4 L'],
 ['Significant figures','The digits in a measurement that are known reliably, plus one estimated digit.','0.00450 has 3'],
-['Catalyst','Speeds up a reaction without being used up.','Enzymes']]
+['Catalyst','Speeds up a reaction without being used up.','Enzymes']],
+sat:[
+['Grid-in (student-produced response)','A question with no answer choices: you type the answer. Fractions and decimals both work.','Type 7/2 or 3.5'],
+['Backsolving','Plug each answer choice into the question to see which one works.','Good when the choices are numbers'],
+['Slope','Rate of change: rise over run, (y₂ − y₁)/(x₂ − x₁).','In C = 15h + 40, the slope 15 is the cost per hour'],
+['y-intercept','The value of y when x = 0: the starting or fixed amount.','In C = 15h + 40, 40 is the fixed fee'],
+['Parallel / Perpendicular lines','Same slope / slopes that are negative reciprocals.','2 and −1/2 are perpendicular'],
+['No solution / Infinitely many solutions','Linear equations: same x-coefficient but different constants / both sides identical. Systems: parallel lines / the same line.',''],
+['Zero (root, x-intercept)','An x-value that makes a function equal 0.','x² − 9 = 0 has zeros 3 and −3'],
+['Vertex','The highest or lowest point of a parabola, at x = −b/(2a).',''],
+['Discriminant','b² − 4ac: positive → 2 real solutions, zero → 1, negative → none.',''],
+['Exponential growth / decay','Multiplying by the same factor each period: (1 + r) to grow, (1 − r) to decay.','5% growth: × 1.05 each year'],
+['Function notation','f(3) means the output when the input is 3.','If f(x) = 2x + 1, f(3) = 7'],
+['Composition','f(g(x)): put x into g, then put that result into f.',''],
+['Mean / Median','The average / the middle value in order.','Outliers move the mean much more than the median'],
+['Range / Standard deviation','Largest minus smallest / how spread out the data is from the mean.',''],
+['Outlier','A value far from the rest of the data.',''],
+['Percent change','(new − original) ÷ original × 100.','$40 to $50 is a 25% increase'],
+['Conditional probability','The probability within one group only: that group’s total is the denominator.','“Of the seniors, …”'],
+['Similar triangles','Same shape: matching angles are equal and matching sides are proportional.',''],
+['Special right triangles','30°-60°-90°: x, x√3, 2x.  45°-45°-90°: x, x, x√2.',''],
+['SOH CAH TOA','sin = opposite/hypotenuse, cos = adjacent/hypotenuse, tan = opposite/adjacent.',''],
+['Complementary angles in trig','sin x° = cos(90° − x°).','sin 30° = cos 60°'],
+['Radian','π radians = 180°.','90° = π/2']]
 };
 
 /* ================= formulas ================= */
@@ -1940,7 +2293,17 @@ chem:[['Significant figures',[['Nonzero digits','always count'],['Zeros between 
  ['Gas laws',[['Kelvin','K = °C + 273'],['Boyle','P₁V₁ = P₂V₂'],['Charles','V₁/T₁ = V₂/T₂'],['Gay-Lussac','P₁/T₁ = P₂/T₂'],['Combined','P₁V₁/T₁ = P₂V₂/T₂'],['Ideal gas','PV = nRT,  R = 0.0821 L·atm/(mol·K)'],['At STP','1 mol of gas = 22.4 L']]],
  ['Solutions',[['Molarity','M = mol solute / L solution'],['Dilution','M₁V₁ = M₂V₂']]],
  ['Heat',[['Heat and temperature','q = mcΔT'],['Change in temperature','ΔT = final − initial'],['Water','c = 4.18 J/(g·°C)'],['Melting ice','334 J/g'],['Calorimetry','heat lost = heat gained']]],
- ['Acids and bases',[['pH','pH = −log[H⁺]'],['pOH','pOH = −log[OH⁻]'],['pH + pOH','= 14'],['From pH','[H⁺] = 10^(−pH)'],['Scale','below 7 acidic, 7 neutral, above 7 basic']]]]
+ ['Acids and bases',[['pH','pH = −log[H⁺]'],['pOH','pOH = −log[OH⁻]'],['pH + pOH','= 14'],['From pH','[H⁺] = 10^(−pH)'],['Scale','below 7 acidic, 7 neutral, above 7 basic']]]],
+sat:[['Linear equations and lines',[['Slope','m = (y₂ − y₁) / (x₂ − x₁)'],['Slope-intercept form','y = mx + b'],['Parallel / perpendicular','same slope / m₁ · m₂ = −1'],['No solution','same x-coefficient, different constant'],['Infinitely many solutions','both sides identical'],['Systems of equations','substitute, or add the equations to eliminate a variable']]],
+ ['Inequalities',[['Flip the sign','when multiplying or dividing by a negative'],['At most / at least','≤ / ≥']]],
+ ['Quadratics',[['Quadratic formula','x = (−b ± √(b² − 4ac)) / (2a)'],['Discriminant','b² − 4ac'],['Vertex','x = −b / (2a)'],['Vertex form','y = a(x − h)² + k'],['Sum / product of solutions','−b/a  /  c/a']]],
+ ['Exponents and radicals',[['Multiply','xᵃ · xᵇ = xᵃ⁺ᵇ'],['Divide','xᵃ ÷ xᵇ = xᵃ⁻ᵇ'],['Power of a power','(xᵃ)ᵇ = xᵃᵇ'],['Roots','ⁿ√(xᵐ) = x^(m/n)'],['Negative exponent','x⁻ⁿ = 1/xⁿ'],['Exponential model','f(t) = a(1 ± r)ᵗ']]],
+ ['Functions',[['Evaluate','f(3): replace x with 3'],['Composition','f(g(x)): inside first']]],
+ ['Ratios and percents',[['Percent change','(new − original) / original × 100'],['Discount','sale price = (1 − p) × original'],['Changes in a row','multiply the factors'],['Unit conversion','multiply by fractions that cancel units']]],
+ ['Statistics and probability',[['Mean','sum ÷ count'],['Median','middle value in order (average the two middles)'],['Combined mean','total of all values ÷ total count'],['Probability','favorable ÷ total'],['Conditional','use only that group’s total'],['Or','P(A) + P(B) − P(A and B)']]],
+ ['Geometry (on the reference sheet)',[['Triangle angles','add to 180°'],['Pythagorean theorem','a² + b² = c²'],['Rectangle','A = lw,  P = 2l + 2w'],['Triangle area','A = ½bh'],['Cylinder','V = πr²h'],['Cone / pyramid','V = ⅓πr²h  /  V = ⅓lwh'],['Sphere','V = ⁴⁄₃πr³'],['Scaling by k','lengths × k, areas × k², volumes × k³']]],
+ ['Circles',[['Area','A = πr²'],['Circumference','C = 2πr'],['Arc length','(angle/360) × 2πr'],['Sector area','(angle/360) × πr²'],['Equation of a circle','(x − h)² + (y − k)² = r²']]],
+ ['Right triangles and trig',[['SOH CAH TOA','sin = opp/hyp, cos = adj/hyp, tan = opp/adj'],['Complementary angles','sin x° = cos(90° − x°)'],['30°-60°-90°','x, x√3, 2x'],['45°-45°-90°','x, x, x√2'],['Radians','180° = π radians']]]]
 };
 
 /* ---------- Elementary terms and fact sheet ---------- */
@@ -2036,7 +2399,8 @@ const normAns=s=>String(s).normalize('NFKC').toLowerCase().replace(/[‘’]/g,"
 // Order matters: a mixed-up operation is the most useful thing to say, then sign, decimal point, upside down,
 // rounding, off by one, and finally "very close".
 function mistakeHint(p,raw){try{
-  if(p.kind==='mc'||p.kind==='poly')return '';
+  if(p.kind==='mc')return (p.why&&p.why[+raw])||'';  // SAT/ACT choices carry the mistake each wrong one comes from
+  if(p.kind==='poly')return '';
   if(p.kind==='coef'){const a=(raw.match(/\d+/g)||[]).map(Number),c=p.coef;
     if(a.length!==c.length)return `Type one coefficient for each of the ${c.length} formulas, in order, including any 1s.`;
     const k=a[0]/c[0];if(k>1&&Number.isInteger(k)&&a.every((x,i)=>x===c[i]*k))return 'That balances, but the coefficients can be divided by '+k+'. Use the smallest whole numbers.';return ''}
@@ -3148,7 +3512,8 @@ const WDESC={elem:['Grades 1–5','Place value, the four operations, fractions, 
   alg2:['High school','Quadratics, complex numbers, exponentials, logs and sequences'],
   pre:['High school','Trig, the unit circle, radians, asymptotes and limits'],
   phys:['High school','Motion, forces, energy, momentum, circuits and waves'],
-  chem:['High school','Moles, balancing equations, stoichiometry, gas laws, solutions and pH']};
+  chem:['High school','Moles, balancing equations, stoichiometry, gas laws, solutions and pH'],
+  sat:['Test prep','Algebra, advanced math, data and probability, geometry and trig, in SAT/ACT style']};
 function openWelcome(){const w=$('welcome');
   $('wopts').innerHTML=SUBJ.map(s=>{const d=WDESC[s.id]||['',''];return `<button class="wopt" type="button" data-subj="${s.id}"><b>${s.name}</b>${d[0]?`<em>${d[0]}</em>`:''}${d[1]?`<span>${d[1]}</span>`:''}</button>`}).join('');
   $('wopts').querySelectorAll('[data-subj]').forEach(b=>b.onclick=()=>closeWelcome(b.dataset.subj));

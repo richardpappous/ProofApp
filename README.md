@@ -1,11 +1,11 @@
 # Proof
 
-A math and science practice and study site, from Elementary math through Pre-Calculus, Physics and Chemistry, plus subjects you make yourself.
+A math and science practice and study site, from Elementary math through Pre-Calculus, Physics, Chemistry and SAT/ACT Math, plus subjects you make yourself.
 
 **Live site:** https://richardpappous.github.io/ProofApp/
 
 ## Features
-- **Subjects:** Elementary, Middle School, Algebra 1, Geometry, Algebra 2, Pre-Calculus, Physics, and Chemistry
+- **Subjects:** Elementary, Middle School, Algebra 1, Geometry, Algebra 2, Pre-Calculus, Physics, Chemistry, and SAT/ACT Math (test-style multiple choice and grid-ins)
 - **Practice problems:** new problems every time, at Easy, Medium, or Hard, with word problems and diagrams where they help
 - **Hints and worked steps** for every problem
 - **Tests:** quick knowledge checks, custom tests built from chosen topics, and timed tests you can resume
