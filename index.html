@@ -1917,12 +1917,12 @@ function setSubj(id){
   syncAddTab();
   const sel=$('topic');sel.innerHTML='<option value="__smart">Smart mix</option><option value="All">All topics</option>'+Object.keys(GEN[id]).map(k=>`<option>${k}</option>`).join('');
   $('pnote').textContent=NOTES[id];
-  newProblem();renderTerms();renderFormulas();
+  showProblem();renderTerms();renderFormulas();
   if(view==='progress')renderProgress();if(view==='tests')renderTests();
   saveUI();
 }
 function saveUI(){try{localStorage.setItem('ssg-ui',JSON.stringify({subj,view,topic}))}catch(e){}}
-$('topic').addEventListener('change',e=>{topic=e.target.value;cur=null;newProblem();saveUI()});
+$('topic').addEventListener('change',e=>{topic=e.target.value;showProblem();saveUI()});
 function makeProblem(sj,name,lvl=LEVEL){if(isCustom(sj))lvl=2;const prev=LEVEL;LEVEL=lvl;let p;
   try{const f=(lvl===1&&EASY[sj][name])||(lvl===3&&HARD[sj][name])||GEN[sj][name];p={name,subj:sj,level:lvl,...f()}}finally{LEVEL=prev}
   p.steps=p.steps.filter(Boolean);for(const k of ['story','q','ask'])if(typeof p[k]==='string')p[k]=fixArticles(p[k]);return p}
@@ -1935,11 +1935,23 @@ document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest
   if(inp.readOnly)return;const focused=document.activeElement===inp,st=focused?inp.selectionStart:inp.value.length,en=focused?inp.selectionEnd:inp.value.length;
   inp.setRangeText(b.dataset.ins,st,en,'end');inp.focus({preventScroll:true})});
 function setLevel(l){LEVEL=l;document.querySelectorAll('#level button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.l===l)));try{localStorage.setItem('ssg-level',String(l))}catch(e){}}
-document.querySelectorAll('#level button').forEach(b=>b.onclick=()=>{setLevel(+b.dataset.l);cur=null;newProblem()});
+document.querySelectorAll('#level button').forEach(b=>b.onclick=()=>{setLevel(+b.dataset.l);showProblem()});
 let hintN=0;
+/* Each difficulty keeps its own problem until it's finished (solved, answer shown, or skipped with New problem),
+   so tapping Easy/Medium/Hard, switching subject or topic, or leaving and coming back never swaps it for another.
+   Saved per student + subject + topic + level under ssg-pending. showProblem() resumes it; newProblem() always makes a new one. */
+const SLOTK='ssg-pending';let SLOTS={};try{SLOTS=JSON.parse(localStorage.getItem(SLOTK)||'{}')||{}}catch(e){}
+const slotKey=()=>[Store.local.current,subj,topic,isCustom(subj)?2:LEVEL].join('|');
+function saveSlots(){const ks=Object.keys(SLOTS);if(ks.length>60)ks.sort((a,b)=>SLOTS[a].ts-SLOTS[b].ts).slice(0,ks.length-60).forEach(k=>delete SLOTS[k]);
+  try{localStorage.setItem(SLOTK,JSON.stringify(SLOTS))}catch(e){}}
+function keepSlot(){if(!cur)return;SLOTS[slotKey()]={p:cur,answered,ts:Date.now()};saveSlots()}
+function clearSlot(){if(SLOTS[slotKey()]){delete SLOTS[slotKey()];saveSlots()}}
+function showProblem(){const s=SLOTS[slotKey()],p=s&&s.p;
+  if(p&&p.subj===subj&&GEN[subj]&&GEN[subj][p.name]){cur=p;answered=!!s.answered;render();refreshInfo();return}
+  newProblem()}
 function newProblem(){
   const mixed=topic==='All'||topic==='__smart',due=reviewsDue(subj).filter(x=>mixed||x.k===subj+'|'+topic),rv=due.find(x=>!cur||cur.review!==x.id);
-  if(rv){cur=makeProblem(subj,splitKey(rv.k)[1],rv.lvl);cur.review=rv.id;answered=false;render();refreshInfo();return}
+  if(rv){cur=makeProblem(subj,splitKey(rv.k)[1],rv.lvl);cur.review=rv.id;answered=false;render();refreshInfo();keepSlot();return}
   const all=Object.keys(GEN[subj]);let name;
   if(!all.length){cur=null;answered=false;$('pcard').classList.remove('solved');  // a custom subject with no questions yet
     $('pcard').innerHTML=`<div class="eyebrow">${subjName(subj)}</div><p class="sub" style="margin:0">This subject doesn’t have any practice questions yet.${TERMS[subj].length?' Its flashcards are in Terms.':''}</p>
@@ -1947,7 +1959,7 @@ function newProblem(){
     $('cmaddq').onclick=()=>openMgr('edit',subj);refreshInfo();return}
   if(topic==='__smart')name=smartPick(all);
   else{const pool=all.filter(k=>topic==='All'||k===topic);do{name=pick(pool)}while(pool.length>1&&cur&&name===cur.name)}
-  cur=makeProblem(subj,name);if(topic==='__smart')cur.smart=true;answered=false;render();refreshInfo()}
+  cur=makeProblem(subj,name);if(topic==='__smart')cur.smart=true;answered=false;render();refreshInfo();keepSlot()}
 function problemHTML(c){return `${c.story?`<p class="story">${c.story}</p>`:`<div class="q"><span class="ask">${c.ask}</span>${c.q}</div>`}
    ${c.fig?`<div class="figbox">${c.fig}</div>`:''}${c.imgRef?imgHTML(c.imgRef):''}
    ${c.story&&c.ask?`<p class="askline">${c.ask}</p>`:''}`}
@@ -1978,7 +1990,7 @@ function render(){
     const b=$('bhint');if(hintN>=H.length){b.textContent='No more hints';b.disabled=true}else b.textContent='Next hint'};
   solved=false;
   $('af').addEventListener('submit',e=>{e.preventDefault();if(solved){nextFromCheck();return}check()});
-  $('bsteps').onclick=()=>{if(!answered){answered=true;if(cur.review)reviewResult(cur.review,false);else addReview(subj+'|'+cur.name,cur.level);Store.changed();refreshInfo()}$('more').innerHTML=stepsHTML(cur,true)};
+  $('bsteps').onclick=()=>{clearSlot();if(!answered){answered=true;if(cur.review)reviewResult(cur.review,false);else addReview(subj+'|'+cur.name,cur.level);Store.changed();refreshInfo()}$('more').innerHTML=stepsHTML(cur,true)};
   $('bnext').onclick=()=>{if(cur.review&&!answered){postponeReview(cur.review);Store.changed()}newProblem()};
   if($('bform'))$('bform').onclick=()=>openFormulaSheet(cur.name);
 }
@@ -1986,12 +1998,13 @@ function check(){
   const g=grade(cur,$('ain').value),fb=$('fb');
   if(BADMSG[g]){fb.innerHTML=`<div class="fb neutral">${BADMSG[g]}</div>`;return}
   const ok=g==='ok';
-  if(!answered){answered=true;const res=record(subj,cur.name,ok,cur.level);if(cur.review)reviewResult(cur.review,ok);else if(!ok)addReview(subj+'|'+cur.name,cur.level);Store.changed();announce(res);refreshInfo()}
+  if(!answered){answered=true;const res=record(subj,cur.name,ok,cur.level);if(cur.review)reviewResult(cur.review,ok);else if(!ok)addReview(subj+'|'+cur.name,cur.level);Store.changed();announce(res);refreshInfo()
+    if(!ok){const s=SLOTS[slotKey()];if(s){s.answered=true;saveSlots()}}}  // a wrong try already counted; don't count it again after coming back
   const why=ok?'':mistakeHint(cur,$('ain').value);
   fb.innerHTML=ok?`<div class="fb good">Correct: ${answerText(cur)}</div>`:`<div class="fb bad">Not quite. ${why?`<span style="font-weight:400">${why}</span> `:''}Try again or open the steps.</div>`;
   if(cur.kind==='mc'){const b=$('pcard').querySelector(`.choice[data-ci="${$('ain').value}"]`);if(b){b.classList.add(ok?'right':'wrong');if(!ok)b.disabled=true}
     if(ok)$('pcard').querySelectorAll('.choice').forEach(x=>x.disabled=true)}
-  if(ok){$('more').innerHTML=stepsHTML(cur,false);solved=true;const inp=$('ain');inp.readOnly=true;inp.classList.add('locked');$('pcard').classList.add('solved');inp.setAttribute('aria-label','Your answer (correct)');
+  if(ok){clearSlot();$('more').innerHTML=stepsHTML(cur,false);solved=true;const inp=$('ain');inp.readOnly=true;inp.classList.add('locked');$('pcard').classList.add('solved');inp.setAttribute('aria-label','Your answer (correct)');
     const b=$('bcheck');b.hidden=false;b.textContent='Next problem →';$('bnext').hidden=true;$('bhint').hidden=true;$('bsteps').hidden=true;b.focus({preventScroll:true})}
 }
 let solved=false;
@@ -2310,7 +2323,7 @@ function renderResults(el){const R=T.results,pct=Math.round(100*R.score/R.total)
   $('rretake').onclick=()=>startTest(R.name,R.kind,R.keys,R.n,R.level,R.limit||0);
   $('rback').onclick=()=>{T.results=null;renderTests()};
 }
-function goPractice(sj,tp){setView('practice');if(subj!==sj)setSubj(sj);topic=tp;$('topic').value=tp;cur=null;newProblem();window.scrollTo({top:0})}
+function goPractice(sj,tp){setView('practice');if(subj!==sj)setSubj(sj);topic=tp;$('topic').value=tp;showProblem();window.scrollTo({top:0})}
 
 /* ================= backup & restore ================= */
 const BK={open:false,pending:null,msg:'',cls:'neutral',code:''};
@@ -2839,7 +2852,7 @@ let savedUI={};try{savedUI=JSON.parse(localStorage.getItem('ssg-ui')||'{}')||{}}
 const h=location.hash.slice(1),hashSubj=SUBJ.some(s=>s.id===h);
 const startSubj=hashSubj?h:SUBJ.some(s=>s.id===savedUI.subj)?savedUI.subj:SUBJ[0].id;
 setSubj(startSubj);
-if(!hashSubj&&savedUI.topic&&(GEN[startSubj][savedUI.topic]||savedUI.topic==='All')){topic=savedUI.topic;$('topic').value=topic;cur=null;newProblem()}
+if(!hashSubj&&savedUI.topic&&(GEN[startSubj][savedUI.topic]||savedUI.topic==='All')){topic=savedUI.topic;$('topic').value=topic;showProblem()}
 const startView=VIEWS.includes(h)?h:VIEWS.includes(savedUI.view)?savedUI.view:'practice';
 if(startView!=='practice')setView(startView);
 saveUI();
