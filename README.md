@@ -2,7 +2,7 @@
 
 A math and science practice and study site, from Elementary math through Pre-Calculus and Physics, plus subjects you make yourself.
 
-**Live site:** https://richardpappous.github.io/Subject-Study-Guide/
+**Live site:** https://richardpappous.github.io/Proof-App/
 
 ## Features
 - **Subjects:** Elementary, Middle School, Algebra 1, Geometry, Algebra 2, Pre-Calculus, and Physics
