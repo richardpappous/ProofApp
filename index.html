@@ -650,12 +650,12 @@ GEN.ms['Fractions']=()=>{
   return{q:`${FH(n1,d1)} ${op} ${FH(n2,d2)}`,ask:'Compute and simplify',ans:n/d,show:fr(n,d),steps,tip}};
 GEN.ms['Percent of a number']=()=>{const p=pick([5,10,12,15,20,25,30,40,50,60,75,80,125]),n=ri(2,20)*pick([4,10,20]),v=r2(p*n/100);
   return{q:`${p}% of ${n}`,ask:'Find',ans:v,steps:[`${p}% = ${p/100}`,`${p/100} × ${n} = ${v}`],tip:'Build it from 10%: move the decimal one place, then scale. 15% is 10% plus half of that.'}};
-GEN.ms['Percent change']=()=>{const o=ri(2,20)*10,p=pick([10,20,25,50,-10,-20,-25,-40,75,150]),nw=o*(1+p/100);
-  return{q:`${o} → ${nw}`,ask:'Percent change (use a negative for a decrease)',ans:p,steps:[`Change = ${nw} − ${o} = ${N(nw-o)}`,`Divide by the original: ${N(nw-o)} ÷ ${o} = ${(nw-o)/o}`,`= ${N(p)}%`],tip:'Always divide by the original amount, never the new one. "Change over original."'}};
+GEN.ms['Percent change']=()=>{const o=ri(2,20)*10,p=pick([10,20,25,50,-10,-20,-25,-40,75,150]),nw=o*(100+p)/100;
+  return{q:`${o} → ${nw}`,ask:'Percent change (use a negative for a decrease)',ans:p,steps:[`Change = ${nw} − ${o} = ${N(nw-o)}`,`Divide by the original: ${N(nw-o)} ÷ ${o} = ${N(p/100)}`,`= ${N(p)}%`],tip:'Always divide by the original amount, never the new one. "Change over original."'}};
 GEN.ms['Order of operations']=()=>{const t=ri(0,2);
   if(t===0){const a=ri(2,12),b=ri(2,5),c=ri(3,9),d=ri(1,c-1),v=a+b*(c-d)**2;return{q:`${a} + ${b} × (${c} − ${d})²`,ask:'Evaluate',ans:v,steps:[`Parentheses: ${c} − ${d} = ${c-d}`,`Exponent: ${c-d}² = ${(c-d)**2}`,`Multiply: ${b} × ${(c-d)**2} = ${b*(c-d)**2}`,`Add: ${a} + ${b*(c-d)**2} = ${v}`],tip:'Most mistakes come from adding first. Have them underline each step before doing it.'}}
   if(t===1){const a=ri(1,9),b=ri(1,9),c=ri(2,6),e=ri(2,5),d=e*ri(2,6),v=(a+b)*c-d/e;return{q:`(${a} + ${b}) × ${c} − ${d} ÷ ${e}`,ask:'Evaluate',ans:v,steps:[`Parentheses: ${a+b}`,`Multiply and divide left to right: ${a+b} × ${c} = ${(a+b)*c}, ${d} ÷ ${e} = ${d/e}`,`Subtract: ${(a+b)*c} − ${d/e} = ${v}`],tip:'Multiplication and division are a tie, done left to right. Same for addition and subtraction.'}}
-  const a=ri(10,30),b=ri(2,5),c=ri(2,9),d=ri(2,9),v=a-b*b+c*d;return{q:`${a} − ${b}² + ${c} × ${d}`,ask:'Evaluate',ans:v,steps:[`Exponent: ${b}² = ${b*b}`,`Multiply: ${c} × ${d} = ${c*d}`,`Left to right: ${a} − ${b*b} + ${c*d} = ${v}`],tip:'After exponents and multiplication, go strictly left to right.'}};
+  const a=ri(10,30),b=ri(2,5),c=ri(2,9),d=ri(2,9),v=a-b*b+c*d;return{q:`${a} − ${b}² + ${c} × ${d}`,ask:'Evaluate',ans:v,steps:[`Exponent: ${b}² = ${b*b}`,`Multiply: ${c} × ${d} = ${c*d}`,`Left to right: ${a} − ${b*b} + ${c*d} = ${N(v)}`],tip:'After exponents and multiplication, go strictly left to right.'}};
 GEN.ms['Integers']=()=>{const t=ri(0,3),a=ri(2,15),b=ri(2,15);
   if(t===0)return{q:`${a} − (−${b})`,ask:'Compute',ans:a+b,steps:[`Subtracting a negative is adding: ${a} + ${b}`,`= ${a+b}`],tip:'Keep, change, change: keep the first number, change − to +, change the sign of the second.'};
   if(t===1)return{q:`(−${a}) × (−${b})`,ask:'Compute',ans:a*b,steps:[`Same signs multiply to a positive`,`${a} × ${b} = ${a*b}`],tip:'Same signs give a positive, different signs give a negative. Works for × and ÷.'};
@@ -684,7 +684,7 @@ GEN.ms['Mean and median']=()=>{
 GEN.ms['Area and angles']=()=>{const t=ri(0,2);
   if(t===0){const l=ri(3,20),w=ri(2,15);return{fig:figPoly([[0,0],[l,0],[l,w],[0,w]],[l,w,'',''],{right:[0]}),q:`rectangle ${l} by ${w}`,ask:'Area of a',ans:l*w,steps:[`A = l × w = ${l} × ${w} = ${l*w} square units`],tip:'Count grid squares on a small example first so "square units" means something.'}}
   if(t===1){const b=ri(3,20),h=ri(2,14);return{fig:figPoly([[0,0],[b,0],[0.3*b,h]],[b,'',''],{post:p=>hLine(p[2],p[0][1],h)}),q:`triangle, base ${b}, height ${h}`,ask:'Area of a',ans:b*h/2,steps:[`A = ½ × b × h = ½ × ${b} × ${h} = ${b*h/2}`],tip:'A triangle is half of a rectangle. Draw the rectangle around it.'}}
-  const a=ri(20,90),b=ri(20,160-a);return{fig:figTriAng(a,b),q:`${a}° and ${b}°`,ask:'Two angles of a triangle are. Find the third.',ans:180-a-b,steps:[`Angles in a triangle sum to 180°`,`180 − ${a} − ${b} = ${180-a-b}°`],tip:'Tear the corners off a paper triangle: they line up into a straight line.'}};
+  const a=ri(20,90),b=ri(20,160-a);return{fig:figTriAng(a,b),q:`${a}° and ${b}°`,ask:'Two angles of a triangle measure the following. Find the third angle.',ans:180-a-b,steps:[`Angles in a triangle sum to 180°`,`180 − ${a} − ${b} = ${180-a-b}°`],tip:'Tear the corners off a paper triangle: they line up into a straight line.'}};
 
 /* ---------- Algebra 1 ---------- */
 GEN.alg1['One-step equation']=()=>{
@@ -705,9 +705,9 @@ GEN.alg1['Slope']=()=>{let x1=ri(-6,6),x2;do{x2=ri(-6,8)}while(x2===x1);const y1
 GEN.alg1['System of equations']=()=>{let m,k,p,q;do{m=nz(-4,4);k=nz(-8,8);p=nz(-5,5);q=nz(-5,5)}while(p+q*m===0);const x=ri(-6,6),y=m*x+k,r=p*x+q*y;
   return{q:`y = ${C(m)}x${S(k)}<br>${C(p)}x${Sx(q,'y')} = ${N(r)}`,ask:'Solve the system. Enter x.',ans:x,steps:[`Substitute: ${C(p)}x ${q<0?'−':'+'} ${Math.abs(q)}(${C(m)}x${S(k)}) = ${N(r)}`,`${C(p+q*m)}x${S(q*k)} = ${N(r)}`,`${C(p+q*m)}x = ${N(r-q*k)},  x = ${N(x)}`,`y = ${N(m)}·${P(x)}${S(k)} = ${N(y)}  →  (${N(x)}, ${N(y)})`],tip:'When one equation already says "y =", substitution is fastest. The solution is where the two lines cross.'}};
 GEN.alg1['Evaluate a function']=()=>{const a=ri(1,3),b=nz(-5,5),c=nz(-9,9),k=nz(-4,4),v=a*k*k+b*k+c;
-  return{q:`f(x) = ${C(a)}x²${Sx(b)}${S(c)}`,ask:`Find f(${N(k)}) for`,ans:v,steps:[`Substitute with parentheses: ${a===1?'':a}(${N(k)})² ${b<0?'−':'+'} ${Math.abs(b)}(${N(k)})${S(c)}`,`${a===1?'':a+'·'}${k*k}${S(b*k)}${S(c)}`,`= ${N(v)}`],tip:'Always put the substituted number in parentheses. That is how students avoid treating (−3)² as −9.'}};
+  return{q:`f(x) = ${C(a)}x²${Sx(b)}${S(c)}`,ask:`Find f(${N(k)}) for`,ans:v,steps:[`Substitute with parentheses: ${C(a)}(${N(k)})² ${b<0?'−':'+'} ${Math.abs(b)===1?'':Math.abs(b)}(${N(k)})${S(c)}`,`${a===1?'':a===-1?'−':N(a)+'·'}${k*k}${S(b*k)}${S(c)}`,`= ${N(v)}`],tip:'Always put the substituted number in parentheses. That is how students avoid treating (−3)² as −9.'}};
 GEN.alg1['Factor a trinomial']=()=>{const p=nz(-7,7),q=nz(-7,7),B=p+q,Cc=p*q;
-  return{kind:'poly',pc:[1,B,Cc],q:`x²${Sx(B)}${S(Cc)}`,ask:'Factor completely. Type it like (x + 2)(x − 5).',show:`(x${S(p)})(x${S(q)})`,steps:[`Find two numbers that multiply to ${N(Cc)} and add to ${N(B)}`,`${N(p)} and ${N(q)}: ${N(p)} × ${N(q)} = ${N(Cc)}, ${N(p)} + ${N(q)} = ${N(B)}`,`(x${S(p)})(x${S(q)})`],tip:'List the factor pairs of the constant in a T-chart. Check by FOIL-ing the answer back out.'}};
+  return{kind:'poly',pc:[1,B,Cc],q:`x²${Sx(B)}${S(Cc)}`,ask:'Factor completely. Type it like (x + 2)(x − 5).',show:`(x${S(p)})(x${S(q)})`,steps:[`Find two numbers that multiply to ${N(Cc)} and add to ${N(B)}`,`${N(p)} and ${N(q)}: ${N(p)} × ${P(q)} = ${N(Cc)}, ${N(p)} + ${P(q)} = ${N(B)}`,`(x${S(p)})(x${S(q)})`],tip:'List the factor pairs of the constant in a T-chart. Check by FOIL-ing the answer back out.'}};
 GEN.alg1['Exponent rules']=()=>{const a=ri(2,9),b=ri(2,9),t=ri(0,2);
   if(t===0)return{q:`x<sup>${a}</sup> · x<sup>${b}</sup> = x<sup>?</sup>`,ask:'Simplify. Enter the exponent.',ans:a+b,steps:[`Same base, multiplying: add exponents`,`${a} + ${b} = ${a+b}`],tip:'Write it out once (x·x·x times x·x) so they see why exponents add.'};
   if(t===1)return{q:`(x<sup>${a}</sup>)<sup>${b}</sup> = x<sup>?</sup>`,ask:'Simplify. Enter the exponent.',ans:a*b,steps:[`Power of a power: multiply exponents`,`${a} × ${b} = ${a*b}`],tip:'Power of a power multiplies; product of powers adds. Students mix these up constantly.'};
@@ -890,7 +890,7 @@ GEN.phys['Energy conservation']=()=>{
     steps:[`mgh = ½mv² → h = v² / (2g)`,`h = ${v}² / (2 × 9.8) = ${v*v} / 19.6`,`h = ${h} m`],tip:'Energy methods skip time entirely. That is why they are often easier than kinematics.'}};
 GEN.phys['Momentum']=()=>{const w=W(2);
   if(w===0){const c=pick([{n:'baseball',m:0.15,v:ri(30,45)},{n:'bowling ball',m:ri(5,7),v:ri(2,8)},{n:'football linebacker',m:ri(90,120),v:ri(4,8)}]),p=r2(c.m*c.v);
-    return{tol:.01,story:`A ${c.m} kg ${c.n} moves at ${c.v} m/s.`,ask:'What is its momentum, in kg·m/s?',ans:p,fig:figRoad({icon:'dot',left:`${c.m} kg`,vel:`v = ${c.v} m/s`}),steps:[`p = mv`,`p = ${c.m} × ${c.v} = ${p} kg·m/s`],tip:'Compare a slow linebacker with a fast baseball. Mass and speed both matter.'}}
+    return{tol:.01,story:`A ${c.m} kg ${c.n} moves at ${c.v} m/s.`,ask:`What is the ${c.n.split(' ').pop()}’s momentum, in kg·m/s?`,ans:p,fig:figRoad({icon:'dot',left:`${c.m} kg`,vel:`v = ${c.v} m/s`}),steps:[`p = mv`,`p = ${c.m} × ${c.v} = ${p} kg·m/s`],tip:'Compare a slow linebacker with a fast baseball. Mass and speed both matter.'}}
   if(w===1){const m1=ri(1,6),m2=m1*ri(1,3),vf=ri(1,6),v1=vf*(m1+m2)/m1;
     return{story:`In a lab, a ${m1} kg cart rolling at ${v1} m/s crashes into a ${m2} kg cart at rest. The carts stick together.`,ask:'How fast do they move together after the collision, in m/s?',ans:vf,fig:figCollide({m1:`${m1} kg`,v1:`${v1} m/s`,m2:`${m2} kg`}),
       steps:[`Momentum before = momentum after`,`${m1}(${v1}) + ${m2}(0) = (${m1} + ${m2})v`,`${m1*v1} = ${m1+m2}v`,`v = ${vf} m/s`],tip:'"Stick together" means one combined mass afterward. A before/after table of mass and velocity keeps it organized.'}}
@@ -964,11 +964,11 @@ HARD.ms['Fractions']=()=>{const op=pick(['+','−','×','÷']),mk=()=>{const d=r
 EASY.ms['Percent of a number']=()=>{const p=pick([10,20,25,50,75,100]),n=ri(1,10)*20,v=p*n/100;
   return{q:`${p}% of ${n}`,ask:'Find',ans:v,steps:[`${p}% = ${p}/100 = ${p/100}`,`${p/100} × ${n} = ${v}`],tip:p===50?'50% is half.':p===25?'25% is a quarter: divide by 4.':'Find 10% first by moving the decimal one place, then build up.'}};
 HARD.ms['Percent of a number']=()=>{const p=pick([2.5,7.5,12.5,17.5,0.5,135,112.5,0.8]),n=ri(12,400),v=r2(p*n/100);
-  return{tol:.011,q:`${p}% of ${n}`,ask:'Find (round to the hundredth)',ans:v,steps:[`${p}% = ${p/100}`,`${p/100} × ${n} = ${v}`],tip:p<1?'A percent under 1 is less than one hundredth. 0.5% means half of one percent.':p>100?'Over 100% means more than the whole number.':'Split it up: 12.5% = 10% + 2.5%. Mental math builds number sense.'}};
-EASY.ms['Percent change']=()=>{const o=ri(1,10)*10,p=pick([10,20,25,50,100]),nw=o*(1+p/100);
-  return{q:`${o} → ${nw}`,ask:'Percent increase',ans:p,steps:[`Change = ${nw} − ${o} = ${nw-o}`,`${nw-o} ÷ ${o} = ${(nw-o)/o}`,`= ${p}%`],tip:'Change over original, then turn the decimal into a percent.'}};
-HARD.ms['Percent change']=()=>{const o=ri(2,40)*8,p=pick([12.5,-12.5,37.5,-37.5,62.5,-62.5,-87.5,150]),nw=o*(1+p/100);
-  return{q:`${o} → ${nw}`,ask:'Percent change (negative for a decrease)',ans:p,steps:[`Change = ${nw} − ${o} = ${N(nw-o)}`,`${N(nw-o)} ÷ ${o} = ${N((nw-o)/o)}`,`= ${N(p)}%`],tip:'Eighths show up a lot: 1/8 = 12.5%, 3/8 = 37.5%, 5/8 = 62.5%, 7/8 = 87.5%.'}};
+  return{tol:.011,q:`${p}% of ${n}`,ask:'Find (round to the hundredth)',ans:v,steps:[`${p}% = ${p/100}`,`${p/100} × ${n} = ${+(p*n/100).toFixed(4)}${r2(p*n/100)===p*n/100?'':` ≈ ${v}`}`],tip:p<1?'A percent under 1 is less than one hundredth. 0.5% means half of one percent.':p>100?'Over 100% means more than the whole number.':'Split it up: 12.5% = 10% + 2.5%. Mental math builds number sense.'}};
+EASY.ms['Percent change']=()=>{const o=ri(1,10)*10,p=pick([10,20,25,50,100]),nw=o*(100+p)/100;
+  return{q:`${o} → ${nw}`,ask:'Percent increase',ans:p,steps:[`Change = ${nw} − ${o} = ${nw-o}`,`${nw-o} ÷ ${o} = ${p/100}`,`= ${p}%`],tip:'Change over original, then turn the decimal into a percent.'}};
+HARD.ms['Percent change']=()=>{const o=ri(2,40)*8,p=pick([12.5,-12.5,37.5,-37.5,62.5,-62.5,-87.5,150]),nw=o*(100+p)/100;
+  return{q:`${o} → ${nw}`,ask:'Percent change (negative for a decrease)',ans:p,steps:[`Change = ${nw} − ${o} = ${N(nw-o)}`,`${N(nw-o)} ÷ ${o} = ${N(p/100)}`,`= ${N(p)}%`],tip:'Eighths show up a lot: 1/8 = 12.5%, 3/8 = 37.5%, 5/8 = 62.5%, 7/8 = 87.5%.'}};
 EASY.ms['Order of operations']=()=>{const a=ri(1,9),b=ri(2,6),c=ri(2,6);
   if(rnd()){const v=a+b*c;return{q:`${a} + ${b} × ${c}`,ask:'Evaluate',ans:v,steps:[`Multiply first: ${b} × ${c} = ${b*c}`,`Then add: ${a} + ${b*c} = ${v}`],tip:'Multiplication comes before addition, even when addition is written first.'}}
   const v=(a+b)*c;return{q:`(${a} + ${b}) × ${c}`,ask:'Evaluate',ans:v,steps:[`Parentheses first: ${a} + ${b} = ${a+b}`,`Then multiply: ${a+b} × ${c} = ${v}`],tip:'Parentheses change the order. Compare with the same problem without them.'}};
@@ -1015,10 +1015,10 @@ HARD.ms['Mean and median']=()=>{
   return{q:nums.join(', '),ask:'Find the median of',ans:md,steps:[`Order: ${so.join(', ')}`,`Even count: average the two middle values`,`(${so[3]} + ${so[4]}) ÷ 2 = ${md}`],tip:'With an even number of values there is no single middle, so average the two.'}};
 EASY.ms['Area and angles']=()=>{
   if(rnd()){const l=ri(2,10),w=ri(2,8);return{fig:figPoly([[0,0],[l,0],[l,w],[0,w]],[l,w,'',''],{right:[0]}),q:`rectangle ${l} by ${w}`,ask:'Area of a',ans:l*w,steps:[`A = l × w = ${l} × ${w} = ${l*w} square units`],tip:'Count the squares in one row, then multiply by the number of rows.'}}
-  const a=ri(3,9)*10,b=ri(2,14-a/10)*10;return{fig:figTriAng(a,b),q:`${a}° and ${b}°`,ask:'Two angles of a triangle are. Find the third.',ans:180-a-b,steps:[`180 − ${a} − ${b} = ${180-a-b}°`],tip:'The three angles of every triangle add to 180°.'}};
+  const a=ri(3,9)*10,b=ri(2,14-a/10)*10;return{fig:figTriAng(a,b),q:`${a}° and ${b}°`,ask:'Two angles of a triangle measure the following. Find the third angle.',ans:180-a-b,steps:[`180 −${a} − ${b} = ${180-a-b}°`],tip:'The three angles of every triangle add to 180°.'}};
 HARD.ms['Area and angles']=()=>{let x,p,q,r,c1,c2,A;do{x=ri(10,40);p=ri(1,3);q=ri(1,3);r=ri(1,3);c1=nz(-10,30);c2=180-(p+q+r)*x-c1;A=[p*x,q*x+c1,r*x+c2]}while(A.some(v=>v<15||v>150)||!c2||Math.abs(c2)>60);
   const L=[`${C(p)}x°`,`(${C(q)}x${S(c1)})°`,`(${C(r)}x${S(c2)})°`];
-  return{fig:figTriAng(A[0],A[1],L),q:L.join(', '),ask:'The angles of a triangle are. Solve for x.',ans:x,steps:[`Angles add to 180: ${L.map(t=>t.replace(/°/g,'')).join(' + ')} = 180`,`${p+q+r}x${S(c1+c2)} = 180`,`${p+q+r}x = ${180-c1-c2}`,`x = ${x}  (the angles are ${A.join('°, ')}°)`],tip:'Write the "adds to 180" equation first, then combine like terms.'}};
+  return{fig:figTriAng(A[0],A[1],L),q:L.join(', '),ask:'These are the three angles of a triangle. Solve for x.',ans:x,steps:[`Angles add to 180: ${L.map(t=>t.replace(/°/g,'')).join(' + ')} = 180`,`${p+q+r}x${S(c1+c2)} = 180`,`${p+q+r}x = ${180-c1-c2}`,`x = ${x}  (the angles are ${A.join('°, ')}°)`],tip:'Write the "adds to 180" equation first, then combine like terms.'}};
 
 /* ---------- Algebra 1 ---------- */
 EASY.alg1['One-step equation']=()=>{
@@ -1044,21 +1044,21 @@ HARD.alg1['Distribute and solve']=()=>{let a,b;do{a=ri(2,7);b=ri(2,7)}while(a===
 EASY.alg1['Inequality']=()=>{const a=ri(1,5),x=ri(1,10),b=ri(1,10),c=a*x+b;
   return{q:`${C(a)}x + ${b} < ${c}`,ask:'Solve. Enter the boundary number.',ans:x,steps:[`Subtract ${b}: ${C(a)}x < ${c-b}`,a>1?`Divide by ${a}: x < ${x}`:`x < ${x}`],tip:'Solve it like an equation. Dividing by a positive keeps the sign the same.'}};
 HARD.alg1['Inequality']=()=>{let a,c;do{a=ri(-4,5);c=ri(-3,7)}while(a>=c||!a||!c);const k=a-c,x0=ri(-6,6),b=nz(-9,9),d=k*x0+b;
-  return{q:`${C(a)}x${S(b)} ≤ ${C(c)}x${S(d)}`,ask:'Solve. Enter the boundary number.',ans:x0,steps:[`Move the x terms left: ${C(k)}x${S(b)} ≤ ${N(d)}`,`${b>0?'Subtract '+b:'Add '+(-b)}: ${C(k)}x ≤ ${N(d-b)}`,`Divide by ${N(k)} and flip the sign: x ≥ ${N(x0)}`],tip:`A negative coefficient at the end means flip. Test x = ${x0+1} in the original to confirm.`}};
+  return{q:`${C(a)}x${S(b)} ≤ ${C(c)}x${S(d)}`,ask:'Solve. Enter the boundary number.',ans:x0,steps:[`Move the x terms left: ${C(k)}x${S(b)} ≤ ${N(d)}`,`${b>0?'Subtract '+b:'Add '+(-b)}: ${C(k)}x ≤ ${N(d-b)}`,`Divide by ${N(k)} and flip the sign: x ≥ ${N(x0)}`],tip:`A negative coefficient at the end means flip. Test x = ${N(x0+1)} in the original to confirm.`}};
 EASY.alg1['Slope']=()=>{const x1=ri(0,4),y1=ri(0,5),dx=ri(1,4),m=ri(1,3),x2=x1+dx,y2=y1+m*dx;
   return{fig:figCoord(x1,y1,x2,y2),q:`(${x1}, ${y1}) and (${x2}, ${y2})`,ask:'Find the slope of the line through',ans:m,steps:[`Rise: ${y2} − ${y1} = ${y2-y1}`,`Run: ${x2} − ${x1} = ${dx}`,`Slope = ${y2-y1}/${dx} = ${m}`],tip:'Count rise and run on the grid first, then connect it to the formula.'}};
 HARD.alg1['Slope']=()=>{
-  if(rnd()){const A=nz(-7,7),B=nz(-6,6),c=nz(-12,12);return{q:`${C(A)}x${Sx(B,'y')} = ${N(c)}`,ask:'Find the slope of the line',ans:-A/B,show:fr(-A,B),steps:[`Solve for y: ${C(B)}y = ${C(-A)}x${S(c)}`,`y = ${fr(-A,B)}x + …`,`Slope = −A/B = ${fr(-A,B)}`],tip:'In standard form Ax + By = C the slope is −A/B. Deriving it once makes it stick.'}}
+  if(rnd()){const A=nz(-7,7),B=nz(-6,6),c=nz(-12,12);return{q:`${C(A)}x${Sx(B,'y')} = ${N(c)}`,ask:'Find the slope of the line',ans:-A/B,show:fr(-A,B),steps:[`Solve for y: ${C(B)}y = ${C(-A)}x${S(c)}`,`y = ${fr(-A,B)==='1'?'':fr(-A,B)==='−1'?'−':fr(-A,B)}x + …`,`Slope = −A/B = ${fr(-A,B)}`],tip:'In standard form Ax + By = C the slope is −A/B. Deriving it once makes it stick.'}}
   let x1=ri(-6,6),x2,y1=ri(-6,6),y2;do{x2=ri(-6,6)}while(x2===x1);do{y2=ri(-6,6)}while(y2===y1);
   return{fig:figCoord(x1,y1,x2,y2),q:`(${N(x1)}, ${N(y1)}) and (${N(x2)}, ${N(y2)})`,ask:'Find the slope of a line perpendicular to the line through',ans:-(x2-x1)/(y2-y1),show:fr(-(x2-x1),y2-y1),steps:[`Slope through the points: ${N(y2-y1)}/${N(x2-x1)} = ${fr(y2-y1,x2-x1)}`,`Perpendicular slope is the negative reciprocal`,`= ${fr(-(x2-x1),y2-y1)}`],tip:'Flip the fraction and change the sign. The two slopes multiply to −1.'}};
 EASY.alg1['System of equations']=()=>{let m1,m2;do{m1=nz(-3,4);m2=nz(-3,4)}while(m1===m2);const x=ri(-5,6),k1=nz(-8,8),y=m1*x+k1,k2=y-m2*x,e2=k2?S(k2):'';
   return{q:`y = ${C(m1)}x${S(k1)}<br>y = ${C(m2)}x${e2}`,ask:'Solve the system. Enter x.',ans:x,steps:[`Both equal y, so set them equal: ${C(m1)}x${S(k1)} = ${C(m2)}x${e2}`,`${C(m1-m2)}x = ${N(k2-k1)}`,`x = ${N(x)}, then y = ${N(y)}`],tip:'When both equations are solved for y, set the right sides equal.'}};
 HARD.alg1['System of equations']=()=>{let a1,b1,a2,b2;do{a1=nz(-6,6);b1=nz(-6,6);a2=nz(-6,6);b2=nz(-6,6)}while(a1*b2-a2*b1===0||[a1,b1,a2,b2].some(v=>Math.abs(v)===1));const x=ri(-6,6),y=ri(-6,6),c1=a1*x+b1*y,c2=a2*x+b2*y,D=a1*b2-a2*b1;
-  return{q:`${C(a1)}x${Sx(b1,'y')} = ${N(c1)}<br>${C(a2)}x${Sx(b2,'y')} = ${N(c2)}`,ask:'Solve by elimination. Enter x.',ans:x,steps:[`Multiply the first equation by ${N(b2)} and the second by ${N(b1)} so the y terms match`,`Subtract to eliminate y: (${N(a1*b2)} − ${P(a2*b1)})x = ${N(c1*b2)} − ${P(c2*b1)}`,`${N(D)}x = ${N(c1*b2-c2*b1)}`,`x = ${N(x)}; substituting back gives y = ${N(y)}`],tip:'Pick the variable that is easiest to cancel, and line up x under x and y under y first.'}};
+  return{q:`${C(a1)}x${Sx(b1,'y')} = ${N(c1)}<br>${C(a2)}x${Sx(b2,'y')} = ${N(c2)}`,ask:'Solve by elimination. Enter x.',ans:x,steps:[`Multiply the first equation by ${N(b2)} and the second by ${N(b1)} so the y terms match`,`Subtract to eliminate y: (${N(a1*b2)} − ${P(a2*b1)})x = ${N(c1*b2)} − ${P(c2*b1)}`,`${C(D)}x = ${N(c1*b2-c2*b1)}`,`x = ${N(x)}; substituting back gives y = ${N(y)}`],tip:'Pick the variable that is easiest to cancel, and line up x under x and y under y first.'}};
 EASY.alg1['Evaluate a function']=()=>{const a=ri(2,6),b=ri(1,9),k=ri(1,6),v=a*k+b;
   return{q:`f(x) = ${a}x + ${b}`,ask:`Find f(${k}) for`,ans:v,steps:[`Replace x with ${k}: ${a}(${k}) + ${b}`,`= ${a*k} + ${b} = ${v}`],tip:'f(3) just means "put 3 in for x".'}};
 HARD.alg1['Evaluate a function']=()=>{const a=nz(-3,3),b=nz(-6,6),c=nz(-9,9),h=pick([1,3,5,-1,-3]),num=a*h*h+2*b*h+4*c;
-  return{q:`f(x) = ${C(a)}x²${Sx(b)}${S(c)}`,ask:`Find f(${fr(h,2)}) for`,ans:num/4,show:fr(num,4),steps:[`Substitute with parentheses: ${a===1?'':N(a)}(${fr(h,2)})² ${b<0?'−':'+'} ${Math.abs(b)}(${fr(h,2)})${S(c)}`,`(${fr(h,2)})² = ${fr(h*h,4)}`,`${fr(a*h*h,4)} ${b*h<0?'−':'+'} ${fr(Math.abs(b*h),2)}${S(c)} = ${fr(num,4)}`],tip:'Fractions go in parentheses. Use a common denominator of 4 at the end.'}};
+  return{q:`f(x) = ${C(a)}x²${Sx(b)}${S(c)}`,ask:`Find f(${fr(h,2)}) for`,ans:num/4,show:fr(num,4),steps:[`Substitute with parentheses: ${C(a)}(${fr(h,2)})² ${b<0?'−':'+'} ${Math.abs(b)===1?'':Math.abs(b)}(${fr(h,2)})${S(c)}`,`(${fr(h,2)})² = ${fr(h*h,4)}`,`${fr(a*h*h,4)} ${b*h<0?'−':'+'} ${fr(Math.abs(b*h),2)}${S(c)} = ${fr(num,4)}`],tip:'Fractions go in parentheses. Use a common denominator of 4 at the end.'}};
 EASY.alg1['Factor a trinomial']=()=>{const p=ri(1,7),q=ri(1,7),B=p+q,Cc=p*q;
   return{kind:'poly',pc:[1,B,Cc],q:`x² + ${B}x + ${Cc}`,ask:'Factor. Type it like (x + 2)(x + 5).',show:`(x + ${p})(x + ${q})`,steps:[`Two numbers that multiply to ${Cc} and add to ${B}`,`${p} and ${q}`,`(x + ${p})(x + ${q})`],tip:`With everything positive, just list factor pairs of ${Cc}.`}};
 HARD.alg1['Factor a trinomial']=()=>{const a=pick([2,3,5]);let p;do{p=nz(-7,7)}while(gcd(a,p)!==1);const q=nz(-6,6),B=a*q+p,Cc=p*q;
@@ -1104,7 +1104,7 @@ EASY.geo['Polygon angles']=()=>{const n=ri(3,6),nm={3:'triangle',4:'quadrilatera
   return{fig:figNgon(n,false),q:`a ${nm}`,ask:'Sum of the interior angles of',ans:(n-2)*180,steps:[`A ${nm} has ${n} sides`,`(${n} − 2) × 180 = ${(n-2)*180}°`],tip:`Draw diagonals from one corner to split it into ${n-2} triangle${n>3?'s':''}.`}};
 HARD.geo['Polygon angles']=()=>{const n=pick([5,6,8,9,10,12,15,18,20,24,30,36]),ang=(n-2)*180/n;
   if(rnd())return{q:`${ang}°`,ask:'Each interior angle of a regular polygon is. How many sides does it have?',ans:n,steps:[`Each exterior angle = 180 − ${ang} = ${r2(180-ang)}°`,`Exterior angles add to 360°: n = 360 ÷ ${r2(180-ang)} = ${n}`],tip:'Exterior angles are the shortcut. They always total 360°.'};
-  return{q:`${r2(360/n)}°`,ask:'Each exterior angle of a regular polygon is. How many sides does it have?',ans:n,steps:[`n = 360 ÷ ${r2(360/n)} = ${n}`],tip:'Walk around the polygon and you turn a full 360° in total.'}};
+  return{q:`${r2(360/n)}°`,ask:'Each exterior angle of a regular polygon measures this much. How many sides does it have?',ans:n,steps:[`n = 360 ÷ ${r2(360/n)} = ${n}`],tip:'Walk around the polygon and you turn a full 360° in total.'}};
 EASY.geo['Volume and surface area']=()=>{
   if(Math.random()<.3){const s=ri(2,6);return{fig:figPrism(s,s,s),q:`side ${s}`,ask:'Volume of a cube with',ans:s**3,steps:[`V = s³ = ${s} × ${s} × ${s} = ${s**3}`],tip:'A cube is a prism with every edge equal.'}}
   const l=ri(2,6),w=ri(2,5),h=ri(2,5);return{fig:figPrism(l,w,h),q:`${l} × ${w} × ${h}`,ask:'Volume of a rectangular prism',ans:l*w*h,steps:[`V = l × w × h = ${l*w*h} cubic units`],tip:'Build it with unit cubes if the student is stuck.'}};
@@ -1128,7 +1128,7 @@ EASY.alg2['Exponential equations']=()=>{const b=pick([2,3,5,10]),k=b===2?ri(2,6)
   return{q:`${b}<sup>x</sup> = ${b**k}`,ask:'Solve for x',ans:k,steps:[`Write ${b**k} as a power of ${b}: ${b}^${k}`,`x = ${k}`],tip:`Ask: ${b} to what power gives ${b**k}?`}};
 HARD.alg2['Exponential equations']=()=>{let p,q,m,n,x;for(;;){p=ri(1,3);q=ri(1,3);if(p===q)continue;m=ri(-3,3);n=ri(-3,3);const num=q*n-p*m,den=p-q;if(num%den===0){x=num/den;break}}
   const base=pick([2,3]),B1=base**p,B2=base**q,e1=m?S(m):'',e2=n?S(n):'';
-  return{q:`${B1}<sup>x${e1}</sup> = ${B2}<sup>x${e2}</sup>`,ask:'Solve for x',ans:x,steps:[`Rewrite as powers of ${base}: ${base}^(${p}(x${e1})) = ${base}^(${q}(x${e2}))`,`Set exponents equal: ${p}x${p*m?S(p*m):''} = ${q}x${q*n?S(q*n):''}`,`${C(p-q)}x = ${N(q*n-p*m)}`,`x = ${N(x)}`],tip:'The whole trick is finding a common base. Powers of 2: 2, 4, 8, 16, 32.'}};
+  return{q:`${B1}<sup>x${e1}</sup> = ${B2}<sup>x${e2}</sup>`,ask:'Solve for x',ans:x,steps:[`Rewrite as powers of ${base}: ${base}^(${p}(x${e1})) = ${base}^(${q}(x${e2}))`,`Set exponents equal: ${C(p)}x${p*m?S(p*m):''} = ${C(q)}x${q*n?S(q*n):''}`,`${C(p-q)}x = ${N(q*n-p*m)}`,`x = ${N(x)}`],tip:'The whole trick is finding a common base. Powers of 2: 2, 4, 8, 16, 32.'}};
 EASY.alg2['Evaluate logarithms']=()=>{const b=pick([2,3,10]),k=b===10?ri(1,4):ri(1,5);
   return{q:`log<sub>${b}</sub>(${b**k})`,ask:'Evaluate',ans:k,steps:[`${b} to what power is ${b**k}?`,`${b}^${k} = ${b**k}, so the answer is ${k}`],tip:'Read it as a question about exponents.'}};
 HARD.alg2['Evaluate logarithms']=()=>{const [q,ans,show,why]=pick([['log<sub>4</sub>(8)',1.5,'3/2','4^(3/2) = (√4)³ = 8'],['log<sub>9</sub>(27)',1.5,'3/2','9^(3/2) = (√9)³ = 27'],['log<sub>8</sub>(4)',2/3,'2/3','8^(2/3) = (∛8)² = 4'],['log<sub>2</sub>(√2)',.5,'1/2','2^(1/2) = √2'],['log<sub>1/2</sub>(8)',-3,'−3','(1/2)^−3 = 2³ = 8'],['log<sub>3</sub>(1/81)',-4,'−4','3^−4 = 1/81'],['log<sub>25</sub>(125)',1.5,'3/2','25^(3/2) = 5³ = 125'],['log<sub>16</sub>(8)',.75,'3/4','16^(3/4) = 2³ = 8'],['log<sub>1/3</sub>(9)',-2,'−2','(1/3)^−2 = 9']]);
@@ -1144,7 +1144,7 @@ HARD.alg2['Discriminant']=()=>{const m=ri(2,9),a=pick([1,1,4,9]),k=2*Math.sqrt(a
 EASY.alg2['Quadratic roots']=()=>{let p,q;do{p=ri(1,9);q=ri(1,9)}while(p===q);const B=-(p+q),Cc=p*q,hi=Math.max(p,q);
   return{q:`x²${Sx(B)}${S(Cc)} = 0`,ask:'Solve. Enter the larger root.',ans:hi,steps:[`Factor: (x − ${p})(x − ${q}) = 0`,`x = ${p} or x = ${q}`,`Larger: ${hi}`],tip:`Two numbers that multiply to ${Cc} and add to ${p+q}.`}};
 HARD.alg2['Quadratic roots']=()=>{let a,b,c,D;do{a=ri(1,3);b=nz(-9,9);c=nz(-9,9);D=b*b-4*a*c}while(D<=0||Number.isInteger(Math.sqrt(D)));const hi=r2((-b+Math.sqrt(D))/(2*a));
-  return{tol:.011,q:`${C(a)}x²${Sx(b)}${S(c)} = 0`,ask:'Use the quadratic formula. Enter the larger root, rounded to the hundredth.',ans:hi,steps:[`x = (−b ± √(b² − 4ac)) / 2a`,`D = ${b*b} − 4(${a})(${N(c)}) = ${D}`,`x = (${N(-b)} ± √${D}) / ${2*a}`,`Larger root: (${N(-b)} + √${D}) / ${2*a} ≈ ${hi}`],tip:'When it will not factor, the formula always works. Simplify the discriminant first.'}};
+  return{tol:.011,q:`${C(a)}x²${Sx(b)}${S(c)} = 0`,ask:'Use the quadratic formula. Enter the larger root, rounded to the hundredth.',ans:hi,steps:[`x = (−b ± √(b² − 4ac)) / 2a`,`D = ${b*b} − 4(${a})(${N(c)}) = ${D}`,`x = (${N(-b)} ± √${D}) / ${2*a}`,`Larger root: (${N(-b)} + √${D}) / ${2*a} ≈ ${N(hi)}`],tip:'When it will not factor, the formula always works. Simplify the discriminant first.'}};
 EASY.alg2['Vertex of a parabola']=()=>{const h=ri(-6,6),k=nz(-9,9),askY=rnd(),inner=h?`x${S(-h)}`:'x';
   return{q:`y = (${inner})²${S(k)}`,ask:`Find the ${askY?'y':'x'}-coordinate of the vertex of`,ans:askY?k:h,steps:[`Vertex form y = (x − h)² + k has vertex (h, k)`,`Vertex: (${N(h)}, ${N(k)})`],tip:'The x-value has the opposite sign of the number inside the parentheses.'}};
 HARD.alg2['Vertex of a parabola']=()=>{const a=pick([2,-2,4]),m=pick([-7,-5,-3,-1,1,3,5,7]),h=m/2,b=-2*a*h,c=nz(-9,9),k=a*h*h+b*h+c,askY=rnd();
@@ -1182,7 +1182,7 @@ EASY.pre['Unit circle']=()=>{const d=pick([0,30,45,60,90]),fn=pick(d===90?['sin'
 HARD.pre['Unit circle']=()=>{const d=pick([30,45,60,120,135,150,210,225,240,300,315,330]),shift=pick([360,-360,720]),A=d+shift,fn=pick(['sin','cos','sec','csc']);
   const s=Math.sin(d*rad),c=Math.cos(d*rad),val=fn==='sin'?s:fn==='cos'?c:fn==='sec'?1/c:1/s,ref=Math.min(d%180,180-d%180);
   const base={sin:UC[ref][0],cos:UC[ref][1],sec:{30:'2√3/3',45:'√2',60:'2'}[ref],csc:{30:'2',45:'√2',60:'2√3/3'}[ref]}[fn],exact=(val<0?'−':'')+base;
-  return{tol:.005,fig:figUC(d,piStr(A,180)),q:`${fn}(${piStr(A,180)})`,ask:'Exact value of',ans:val,show:exact,steps:[`${piStr(A,180)} = ${A}°, coterminal with ${d}°`,`Reference angle ${ref}°, in Quadrant ${d<90?'I':d<180?'II':d<270?'III':'IV'}`,`${fn==='sec'?'sec = 1/cos':fn==='csc'?'csc = 1/sin':fn} → ${exact}`],tip:'Strip off full turns first, then find the reference angle, then decide the sign.'}};
+  return{tol:.005,fig:figUC(d,piStr(A,180)),q:`${fn}(${piStr(A,180)})`,ask:'Exact value of',ans:val,show:exact,steps:[`${piStr(A,180)} = ${N(A)}°, coterminal with ${d}°`,`Reference angle ${ref}°, in Quadrant ${d<90?'I':d<180?'II':d<270?'III':'IV'}`,`${fn==='sec'?'sec = 1/cos':fn==='csc'?'csc = 1/sin':fn} → ${exact}`],tip:'Strip off full turns first, then find the reference angle, then decide the sign.'}};
 EASY.pre['Degrees and radians']=()=>{const d=pick([30,45,60,90,180,360]);
   if(rnd())return{tol:.005,q:`${d}°`,ask:'Convert to radians',ans:d*rad,show:piStr(d,180),steps:[`${d} × π/180 = ${piStr(d,180)}`],tip:'180° = π radians. Everything is a fraction of that.'};
   return{q:piStr(d,180),ask:'Convert to degrees',ans:d,steps:[`Replace π with 180°: ${d}°`],tip:'π is half a turn: 180°.'}};
@@ -1190,7 +1190,7 @@ HARD.pre['Degrees and radians']=()=>{const d=pick([15,75,105,165,195,255,285,345
   if(rnd())return{tol:.005,q:`${N(d)}°`,ask:'Convert to radians',ans:d*rad,show:piStr(d,180),steps:[`${N(d)} × π/180 = ${fr(d,180)} · π`,`= ${piStr(d,180)}`],tip:`Simplify ${Math.abs(d)}/180 carefully, dividing by common factors step by step.`};
   return{q:piStr(d,180),ask:'Convert to degrees',ans:d,steps:[`${piStr(d,180)} × 180/π = ${N(d)}°`],tip:'Replace π with 180 and simplify.'}};
 EASY.pre['Right-triangle trig']=()=>{const [o,a,h]=pick([[3,4,5],[5,12,13],[8,15,17],[6,8,10]]),fn=pick(['sin','cos','tan']),v=fn==='sin'?o/h:fn==='cos'?a/h:o/a,show=fn==='sin'?fr(o,h):fn==='cos'?fr(a,h):fr(o,a);
-  return{fig:figRT(a,o,a,o,h,'θ',1),q:`${fn} θ`,ask:'Using the triangle, find',ans:v,show,steps:[fn==='sin'?'SOH: opposite / hypotenuse':fn==='cos'?'CAH: adjacent / hypotenuse':'TOA: opposite / adjacent',`= ${fn==='sin'?o+'/'+h:fn==='cos'?a+'/'+h:o+'/'+a} = ${show}`],tip:'Label opposite, adjacent and hypotenuse from θ’s point of view first.'}};
+  return{fig:figRT(a,o,a,o,h,'θ',1),q:`${fn} θ`,ask:'Using the triangle, find',ans:v,show,steps:[fn==='sin'?'SOH: opposite / hypotenuse':fn==='cos'?'CAH: adjacent / hypotenuse':'TOA: opposite / adjacent',(r=>`= ${r}${r===show?'':` = ${show}`}`)(fn==='sin'?o+'/'+h:fn==='cos'?a+'/'+h:o+'/'+a)],tip:'Label opposite, adjacent and hypotenuse from θ’s point of view first.'}};
 HARD.pre['Right-triangle trig']=()=>{const th=ri(15,65),dist=ri(4,20)*5,ht=r1(dist*Math.tan(th*rad));
   return{tol:.051,fig:figRT(dist,dist*Math.tan(th*rad),`${dist} m`,'h = ?','',th+'°',0),story:`You stand ${dist} m from the base of a building. The angle of elevation to the top is ${th}°.`,ask:'How tall is the building, in meters? (Round to the tenth.)',ans:ht,steps:[`The height is opposite the angle; your distance is adjacent`,`tan(${th}°) = h / ${dist}`,`h = ${dist} × tan(${th}°) ≈ ${ht} m`],tip:'Sketch the right triangle for every word problem. The angle of elevation sits where the observer stands.'}};
 EASY.pre['Arc length']=()=>{const r=ri(2,10),t=pick([0.5,1,1.5,2,2.5,3]),s=r*t;
@@ -1209,7 +1209,7 @@ EASY.pre['Asymptotes']=()=>{const k=nz(-8,8),a=ri(1,9);
 HARD.pre['Asymptotes']=()=>{let r,s,t;do{r=nz(-6,6);s=nz(-6,6);t=nz(-6,6)}while(new Set([r,s,t]).size<3);const askHole=rnd();
   return{q:`f(x) = ${FH(`(x${S(-r)})(x${S(-s)})`,`(x${S(-r)})(x${S(-t)})`)}`,ask:askHole?'This function has a hole at x = ?':'Vertical asymptote: x = ?',ans:askHole?r:t,steps:[`The factor (x${S(-r)}) cancels top and bottom`,`Canceled factor → hole at x = ${N(r)}`,`Remaining bottom factor → vertical asymptote at x = ${N(t)}`],tip:'Factor first. A factor that cancels makes a hole, not an asymptote.'}};
 EASY.pre['Limits']=()=>{const a=nz(-3,3),b=nz(-6,6),c=nz(-9,9),k=nz(-3,3),v=a*k*k+b*k+c;
-  return{q:`lim<sub>x→${N(k)}</sub> (${C(a)}x²${Sx(b)}${S(c)})`,ask:'Evaluate',ans:v,steps:[`Polynomials are continuous, so substitute directly`,`${N(a)}(${N(k)})²${S(b)}(${N(k)})${S(c)} = ${N(v)}`],tip:'Always try plugging in first. Only do more work if you get 0/0.'}};
+  return{q:`lim<sub>x→${N(k)}</sub> (${C(a)}x²${Sx(b)}${S(c)})`,ask:'Evaluate',ans:v,steps:[`Polynomials are continuous, so substitute directly`,`${C(a)}(${N(k)})² ${b<0?'−':'+'} ${Math.abs(b)===1?'':Math.abs(b)}(${N(k)})${S(c)} = ${N(v)}`],tip:'Always try plugging in first. Only do more work if you get 0/0.'}};
 HARD.pre['Limits']=()=>{
   if(rnd()){const a=nz(-6,6),b=nz(-9,9),c=nz(-9,9),d=ri(1,5),e=nz(-9,9);return{q:`lim<sub>x→∞</sub> ${FH(`${C(a)}x²${Sx(b)}${S(c)}`,`${C(d)}x²${S(e)}`)}`,ask:'Evaluate',ans:a/d,show:fr(a,d),steps:[`Same degree on top and bottom`,`Divide everything by x²; the smaller terms go to 0`,`Limit = ${N(a)}/${d} = ${fr(a,d)}`],tip:'At infinity only the highest powers matter.'}}
   const k=ri(1,9),r=k*k;return{q:`lim<sub>x→${r}</sub> ${FH('√x − '+k,'x − '+r)}`,ask:'Evaluate',ans:1/(2*k),show:'1/'+2*k,steps:[`Direct substitution gives 0/0`,`Multiply by the conjugate: (√x − ${k})(√x + ${k}) = x − ${r}`,`Cancel: 1/(√x + ${k})`,`Substitute: 1/(${k} + ${k}) = 1/${2*k}`],tip:'A square root plus 0/0 usually means multiply by the conjugate.'}};
@@ -1248,7 +1248,7 @@ HARD.phys['Energy']=()=>{const [nm,gm,v]=pick([['baseball',145,40],['tennis ball
 HARD.phys['Energy conservation']=()=>{const h1=pick([30,40,45,50,60]),h2=pick([5,10,15,20]),v=r1(Math.sqrt(2*g*(h1-h2)));
   return{tol:.06,story:`A roller coaster car starts from rest at the top of a ${h1} m hill. Ignore friction.`,ask:`How fast is it moving at the top of the next hill, which is ${h2} m high? (m/s, round to the tenth)`,ans:v,fig:figHill({h:`${h1} m`,v:'v = ?'}),steps:[`Height lost: ${h1} − ${h2} = ${h1-h2} m`,`½mv² = mg·${h1-h2} → v = √(2g · ${h1-h2})`,`v = √(19.6 × ${h1-h2}) ≈ ${v} m/s`],tip:'Only the change in height matters, not the shape of the track.'}};
 HARD.phys['Momentum']=()=>{let m1,m2,v1,v2,vf;do{m1=ri(1,6);m2=ri(1,6);v1=ri(2,8);v2=ri(1,8);vf=(m1*v1-m2*v2)/(m1+m2)}while(!Number.isInteger(vf*10)||vf===0);
-  return{story:`A ${m1} kg cart moving right at ${v1} m/s hits a ${m2} kg cart moving left at ${v2} m/s. They stick together.`,ask:'What is their velocity after the collision, in m/s? (Right is positive.)',ans:vf,fig:figCollide({m1:`${m1} kg`,v1:`${v1} m/s`,m2:`${m2} kg`,v2:`${v2} m/s`}),steps:[`Right is positive, so the second cart has v = −${v2} m/s`,`${m1}(${v1}) + ${m2}(−${v2}) = (${m1} + ${m2})v`,`${m1*v1-m2*v2} = ${m1+m2}v`,`v = ${N(vf)} m/s ${vf>0?'(moving right)':'(moving left)'}`],tip:'Pick a positive direction and give every velocity a sign. The answer’s sign tells the direction.'}};
+  return{story:`A ${m1} kg cart moving right at ${v1} m/s hits a ${m2} kg cart moving left at ${v2} m/s. They stick together.`,ask:'What is their velocity after the collision, in m/s? (Right is positive.)',ans:vf,fig:figCollide({m1:`${m1} kg`,v1:`${v1} m/s`,m2:`${m2} kg`,v2:`${v2} m/s`}),steps:[`Right is positive, so the second cart has v = −${v2} m/s`,`${m1}(${v1}) + ${m2}(−${v2}) = (${m1} + ${m2})v`,`${N(m1*v1-m2*v2)} = ${m1+m2}v`,`v = ${N(vf)} m/s ${vf>0?'(moving right)':'(moving left)'}`],tip:'Pick a positive direction and give every velocity a sign. The answer’s sign tells the direction.'}};
 HARD.phys['Waves']=()=>{
   if(rnd()){const [f,lam]=pick([[100,3],[150,2],[75,4],[300,1],[600,0.5]]);return{story:`An FM radio station broadcasts at ${f} MHz. Radio waves travel at the speed of light, 3.00 × 10⁸ m/s.`,ask:'What is the wavelength, in meters?',ans:lam,fig:figWave({lam:'λ = ?',f:`f = ${f} MHz`}),steps:[`Convert: ${f} MHz = ${f} × 10⁶ Hz`,`λ = v / f = 3.00 × 10⁸ / (${f} × 10⁶)`,`λ = ${lam} m`],tip:'Mega means million. Scientific notation keeps the zeros under control.'}}
   const lc=pick([2,4,5,10,20]),f0=pick([50,100,200,250]),v=r2(lc/100*f0);return{tol:.01,story:`A wave on a guitar string has a wavelength of ${lc} cm and a frequency of ${f0} Hz.`,ask:'What is the wave speed, in m/s?',ans:v,fig:figWave({lam:`λ = ${lc} cm`,f:`f = ${f0} Hz`}),steps:[`Convert: ${lc} cm = ${lc/100} m`,`v = fλ = ${f0} × ${lc/100}`,`v = ${v} m/s`],tip:'Centimeters to meters: divide by 100.'}};
@@ -1357,8 +1357,9 @@ GEN.elem['Decimals']=()=>{
   if(LEVEL===2){let a=ri(100,9999),b=ri(100,9999);const sub=rnd();if(sub&&b>a)[a,b]=[b,a];const v=(sub?a-b:a+b)/100;
     return{q:`${(a/100).toFixed(2)} ${sub?'−':'+'} ${(b/100).toFixed(2)}`,ask:sub?'Subtract':'Add',ans:v,steps:[`Line up the decimal points`,`${(a/100).toFixed(2)} ${sub?'−':'+'} ${(b/100).toFixed(2)} = ${v.toFixed(2)}`],tip:'Line up the decimal points, not the last digits.'}}
   if(rnd()){const a=ri(11,999),b=ri(2,9),v=a*b/100;return{q:`${(a/100).toFixed(2)} × ${b}`,ask:'Multiply',ans:v,steps:[`Multiply as whole numbers: ${a} × ${b} = ${a*b}`,`Two decimal places in the problem, so two in the answer: ${v.toFixed(2)}`],tip:'Count the decimal places in the factors; the answer gets the same number.'}}
-  const a=ri(1,9999)/100,p=pick([10,100,1000]),div=rnd(),v=+(div?a/p:a*p).toPrecision(10);
-  return{q:`${a} ${div?'÷':'×'} ${com(p)}`,ask:'Compute',ans:v,show:String(v),steps:[`${div?'Dividing':'Multiplying'} by ${com(p)} moves the decimal point ${String(p).length-1} place${p>10?'s':''} to the ${div?'left':'right'}`,`= ${v}`],tip:'The digits stay the same; only the decimal point moves.'}};
+  const a=ri(1,9999)/100,p=pick([10,100,1000]),div=rnd(),v=+(div?a/p:a*p).toPrecision(10),
+    vs=(([i,f])=>com(+i)+(f?'.'+f:''))(String(v).split('.'));  // commas, but keep every decimal digit
+  return{q:`${a} ${div?'÷':'×'} ${com(p)}`,ask:'Compute',ans:v,show:vs,steps:[`${div?'Dividing':'Multiplying'} by ${com(p)} moves the decimal point ${String(p).length-1} place${p>10?'s':''} to the ${div?'left':'right'}`,`= ${vs}`],tip:'The digits stay the same; only the decimal point moves.'}};
 GEN.elem['Telling time']=()=>{
   if(LEVEL<3){const h=ri(1,12),m=LEVEL===1?pick([0,15,30,45]):ri(0,11)*5,pt=m/5||12;
     return{kind:'time',ansT:(h%12)*60+m,fig:figClock(h,m),q:'',ask:'What time does the clock show? Type it like 3:45.',show:tstr(h,m),steps:[`The short hand is ${m?`past the ${h}`:`on the ${h}`}, so the hour is ${h}`,`The long hand points at the ${pt}: ${m?`${pt} × 5 = ${m}`:'0'} minutes`,`The time is ${tstr(h,m)}`],tip:'Short hand = hour, long hand = minutes. Count by 5s around the numbers.'}}
@@ -1372,7 +1373,7 @@ GEN.elem['Money']=()=>{
   if(LEVEL===2){const cs=[...Array(ri(0,3)).fill(100),...Array(ri(1,3)).fill(25),...Array(ri(0,3)).fill(10),...Array(ri(0,2)).fill(5),...Array(ri(0,4)).fill(1)],v=cs.reduce((a,b)=>a+b,0);
     return{fig:figCoins(cs),q:'',ask:'How much money is shown, in dollars?',ans:v/100,show:money(v),steps:[cntStr(cs),`Total: ${money(v)}`],tip:'100 cents make a dollar. Count the bills, then add the coins.'}}
   const items=shuf([['pencil',ri(25,95)],['notebook',ri(150,450)],['snack',ri(99,299)],['eraser',ri(30,120)]]).slice(0,ri(2,3)),tot=items.reduce((a,x)=>a+x[1],0),pay=1000;
-  return{story:`You buy ${items.map(x=>`a ${x[0]} for ${money(x[1])}`).join(' and ').replace(/ and (?=[^,]* and )/,', ')}. You pay with a $10 bill.`,ask:'How much change do you get, in dollars?',ans:(pay-tot)/100,show:money(pay-tot),steps:[`Total: ${items.map(x=>money(x[1])).join(' + ')} = ${money(tot)}`,`Change: $10.00 − ${money(tot)} = ${money(pay-tot)}`],tip:'Counting up from the total to $10 is how cashiers make change, and it avoids borrowing.'}};
+  return{story:`You buy ${items.map(x=>`${/^[aeiou]/.test(x[0])?'an':'a'} ${x[0]} for ${money(x[1])}`).join(' and ').replace(/ and (?=[^,]* and )/,', ')}. You pay with a $10 bill.`,ask:'How much change do you get, in dollars?',ans:(pay-tot)/100,show:money(pay-tot),steps:[`Total: ${items.map(x=>money(x[1])).join(' + ')} = ${money(tot)}`,`Change: $10.00 − ${money(tot)} = ${money(pay-tot)}`],tip:'Counting up from the total to $10 is how cashiers make change, and it avoids borrowing.'}};
 GEN.elem['Perimeter and area']=()=>{
   if(LEVEL===1){const l=ri(2,8),w=ri(2,5);return{fig:figGrid(l,w),q:'',ask:'Count the squares. What is the area, in square units?',ans:l*w,steps:[`${w} rows of ${l} squares`,`${w} × ${l} = ${l*w} square units`],tip:'Area counts the squares inside. Rows times columns is a shortcut for counting.'}}
   if(LEVEL===2){const l=ri(3,20),w=ri(2,15),per=rnd();return{fig:figPoly([[0,0],[l,0],[l,w],[0,w]],[l+' ft',w+' ft','',''],{right:[0]}),q:`a rectangle ${l} ft by ${w} ft`,ask:per?'Perimeter, in feet, of':'Area, in square feet, of',ans:per?2*(l+w):l*w,steps:per?[`Perimeter: add all four sides`,`${l} + ${w} + ${l} + ${w} = ${2*(l+w)} ft`]:[`Area = length × width`,`${l} × ${w} = ${l*w} square feet`],tip:'Perimeter is the fence around it; area is the carpet inside.'}}
@@ -1555,7 +1556,7 @@ EASY.chem['Stoichiometry']=()=>{const e=pick(EQS),[A,B]=shuf(spec(e)).slice(0,2)
     steps:[`The coefficients give the mole ratio ${cf(B.f)} : ${cf(A.f)} = ${B.c} : ${A.c}`,`${nA} × ${B.c}/${A.c} = ${nB} mol`],tip:'Coefficients are mole ratios. Put the substance you want on top of the ratio so the given one cancels.'}};
 GEN.chem['Stoichiometry']=()=>{const e=pick(EQS),[A,B]=shuf(spec(e)).slice(0,2),MA=MMr(A.f),MB=MMr(B.f),nA=A.c*pick([0.5,1,1.5,2,2.5,3]),mA=r2(nA*MA),nB=mA/MA*B.c/A.c,mB=r1(nB*MB);
   return{tol:Math.max(.11,mB*.002),story:`${eqLine(e)}${f2(mA)} g of ${cf(A.f)} ${A.re?'reacts completely':'is produced'}.`,ask:`How many grams of ${cf(B.f)} ${B.re?'react':'are produced'}? Round to the tenth. (${mlist(elsOf(A.f,B.f))})`,ans:mB,
-    steps:[`Molar masses: ${cf(A.f)} = ${f2(MA)} g/mol, ${cf(B.f)} = ${f2(MB)} g/mol`,`Moles of ${cf(A.f)}: ${f2(mA)} ÷ ${f2(MA)} = ${+(mA/MA).toFixed(3)} mol`,`Mole ratio: ${+(mA/MA).toFixed(3)} × ${B.c}/${A.c} = ${+nB.toFixed(3)} mol of ${cf(B.f)}`,`${+nB.toFixed(3)} × ${f2(MB)} ≈ ${mB} g`],tip:'Grams → moles → mole ratio → moles → grams. You can’t go straight from grams of one substance to grams of another.'}};
+    steps:[`Molar masses: ${cf(A.f)} = ${f2(MA)} g/mol, ${cf(B.f)} = ${f2(MB)} g/mol`,`Moles of ${cf(A.f)}: ${f2(mA)} ÷ ${f2(MA)} = ${+(mA/MA).toFixed(3)} mol`,`Mole ratio: ${+(mA/MA).toFixed(3)} × ${B.c}/${A.c} = ${+(+(mA/MA).toFixed(3)*B.c/A.c).toFixed(3)} mol of ${cf(B.f)}`,`${+(+(mA/MA).toFixed(3)*B.c/A.c).toFixed(3)} × ${f2(MB)} ≈ ${mB} g`],tip:'Grams → moles → mole ratio → moles → grams. You can’t go straight from grams of one substance to grams of another.'}};
 HARD.chem['Stoichiometry']=()=>{
   if(coin()){const e=pick(EQS.filter(x=>x.r.length===2)),S=spec(e),[R1,R2]=S,P=pick(S.filter(s=>!s.re));let x,y;do{x=pick([1,1.5,2,2.5,3,4]);y=pick([1,1.5,2,2.5,3,4])}while(x===y);
     const n1=R1.c*x,n2=R2.c*y,lim=x<y?R1:R2,nP=P.c*Math.min(x,y);
@@ -1667,7 +1668,8 @@ function satQ(p,wrong,o={}){
   const all=shuf([[right,''],...opts]);
   return{...p,kind:'mc',choices:all.map(x=>x[0]),correct:all.findIndex(x=>x[0]===right),show:right,why:all.map(x=>x[1])}}
 const hx=s=>s.replace(/</g,'&lt;').replace(/>/g,'&gt;');  // inequality signs inside HTML text
-const usd=v=>'$'+(Number.isInteger(v)?com(v):v.toFixed(2)),pct=v=>`${+v.toFixed(2)}%`;
+const usd=v=>(v<0?'−$':'$')+(Number.isInteger(v)?com(Math.abs(v)):Math.abs(v).toFixed(2)),pct=v=>`${+v.toFixed(2)}%`;
+const frEq=(n,d)=>`${n}/${d}${fr(n,d)===`${n}/${d}`?'':` = ${fr(n,d)}`}`;  // "12/40 = 3/10", but just "43/100" when it can't reduce
 
 /* ---------- algebra ---------- */
 EASY.sat['Linear equations']=()=>{const a=ri(2,9),x=nz(-9,12),b=nz(-15,15),c=a*x+b;
@@ -1729,8 +1731,9 @@ GEN.sat['Lines and slope']=()=>{
     steps:[`Use y = mx + b: ${N(y0)} = ${N(m)}(${N(x0)}) + b`,`${N(y0)} = ${N(m*x0)} + b`,`b = ${N(b)}`],tip:'Plug the point into y = mx + b and solve for b.'},
     [[y0+m*x0,'Subtract m·x from y; don’t add it.'],[y0-x0,'Multiply the slope by x before subtracting.'],[-b,'']])};
 HARD.sat['Lines and slope']=()=>{let p,q;do{p=nz(-4,4);q=ri(1,5)}while(gcd(p,q)!==1||Math.abs(p)===q);const m=p/q,pm=-q/p,c=nz(-6,6),t=nz(-2,2),x0=p*t,b=nz(-8,8),y0=pm*x0+b;
-  return satQ({story:`Line k is perpendicular to the line y = ${fr(p,q)}x${S(c)} and passes through the point (${N(x0)}, ${N(y0)}).`,ask:'What is the y-intercept of line k?',ans:b,
-    steps:[`Perpendicular slopes are negative reciprocals, so line k has slope ${fr(-q,p)}`,`${N(y0)} = ${fr(-q,p)}(${N(x0)}) + b, so ${N(y0)} = ${N(pm*x0)} + b`,`b = ${N(b)}`],tip:'Flip the fraction and change the sign to get a perpendicular slope.'},
+  const par=s=>s.includes('/')?`(${s})`:s;  // (−3/4)x, not the ambiguous −3/4x
+  return satQ({story:`Line k is perpendicular to the line y = ${par(fr(p,q))}x${S(c)} and passes through the point (${N(x0)}, ${N(y0)}).`,ask:'What is the y-intercept of line k?',ans:b,
+    steps:[`Perpendicular slopes are negative reciprocals, so line k has slope ${fr(-q,p)}`,`${N(y0)} = ${par(fr(-q,p))}(${N(x0)}) + b, so ${N(y0)} = ${N(pm*x0)} + b`,`b = ${N(b)}`],tip:'Flip the fraction and change the sign to get a perpendicular slope.'},
     [[y0-m*x0,'Use the perpendicular slope, not the original one.'],[y0-(q/p)*x0,'Perpendicular slopes have opposite signs too.'],[y0+m*x0,'']])};
 
 const FLIP={'<':'>','>':'<','≤':'≥','≥':'≤'};
@@ -1802,7 +1805,7 @@ HARD.sat['Exponents and radicals']=()=>{const P0=pick([200,500,1200,2500,8000]),
   const t=pick([2,3,4,5]),v=Math.round(P0*fac**t);
   return satQ({tol:.51,story:`${thing} is ${com(P0)} and ${grow?'increases':'decreases'} by ${r}% each year.`,ask:`What is it after ${t} years, to the nearest whole number?`,ans:v,show:com(v),
     steps:[`Multiply by ${fac} each year: ${com(P0)}(${fac})${supN(t)}`,`${com(P0)} × ${+(fac**t).toFixed(5)} ≈ ${com(v)}`],tip:'Percent change each year compounds: use a power, not repeated adding.'},
-    [[Math.round(P0*(1+(grow?1:-1)*r*t/100)),`Percent change compounds; it isn’t ${r}% of the original every year.`],[Math.round(P0*fac**(t-1)),`That is after ${t-1} years.`],[Math.round(P0*fac**t*(grow?1.1:0.9)),'']],{f:com})};
+    [[Math.max(0,Math.round(P0*(1+(grow?1:-1)*r*t/100)))||Math.round(P0*fac**(t+1)),`Percent change compounds; it isn’t ${r}% of the original every year.`],[Math.round(P0*fac**(t-1)),`That is after ${t-1} year${t-1===1?'':'s'}.`],[Math.round(P0*fac**t*(grow?1.1:0.9)),'']],{f:com})};
 
 EASY.sat['Functions']=()=>{const a=nz(-3,3),b=nz(-6,6),k=nz(-4,4),v=a*k*k+b;
   return satQ({q:`f(x) = ${C(a)}x²${S(b)}`,ask:`What is f(${N(k)})?`,ans:v,steps:[`Replace x with ${N(k)}: f(${N(k)}) = ${N(a)}(${N(k)})²${S(b)}`,`= ${N(a)}(${k*k})${S(b)} = ${N(v)}`],tip:'Put the input in parentheses before squaring, especially when it is negative.'},
@@ -1823,7 +1826,7 @@ HARD.sat['Functions']=()=>{const m=nz(-5,6),b=nz(-12,12),x1=ri(1,4),x2=x1+ri(2,4
 EASY.sat['Ratios and percents']=()=>{
   if(coin()){const n=pick([4,5,6,8,10,12]),u=pick([0.25,0.5,0.75,1.25,1.5,2]);let m;do{m=pick([3,7,9,14,15,18,20])}while(m===n);
     return satQ({story:`${n} notebooks cost ${usd(n*u)}.`,ask:`At the same price per notebook, how much do ${m} notebooks cost?`,ans:m*u,show:usd(m*u),steps:[`One notebook: ${usd(n*u)} ÷ ${n} = ${usd(u)}`,`${m} × ${usd(u)} = ${usd(m*u)}`],tip:'Find the unit price first, then scale up.'},
-      [[n*u*m,'Find the price of one notebook first.'],[m*u+u,''],[(m-n)*u,'That is only the cost of the extra notebooks.']],{f:usd})}
+      [[n*u*m,'Find the price of one notebook first.'],[m*u+u,''],[m>n?(m-n)*u:n*u/m,m>n?'That is only the cost of the extra notebooks.':'Divide the cost by the number of notebooks you bought, not the number you want.']],{f:usd})}
   const X=pick([20,24,30,40,45,60,80,120]),p=pick([10,15,20,25,30,40,50]),sale=X*(1-p/100);
   return satQ({story:`A jacket normally costs $${X}. It is on sale for ${p}% off.`,ask:'What is the sale price?',ans:sale,show:usd(sale),steps:[`Discount: ${p}% of ${X} = ${usd(X*p/100)}`,`Sale price: ${X} − ${usd(X*p/100)} = ${usd(sale)}`],tip:'Or in one step: the sale price is (100 − p)% of the original.'},
     [[X*p/100,'That is the discount, not the sale price.'],[X-p,`Take ${p}% of the price, not ${p} dollars.`],[X*(1+p/100),'A discount lowers the price.']],{f:usd})};
@@ -1835,7 +1838,7 @@ GEN.sat['Ratios and percents']=()=>{
   const v=pick([15,30,45,60,75]),fps=v*22/15;
   return satQ({story:`A car travels at ${v} miles per hour.`,ask:'What is its speed in feet per second? (1 mile = 5,280 feet)',ans:fps,
     steps:[`${v} miles per hour = ${com(v*5280)} feet per 3,600 seconds`,`${com(v*5280)} ÷ 3,600 = ${fps}`],tip:'Write the units as fractions and multiply so the unwanted units cancel.'},
-    [[v*5280/60,'An hour is 3,600 seconds, not 60.'],[v*3600/5280,'Multiply by 5,280 feet per mile and divide by 3,600 seconds per hour.'],[v*5280,'Also convert hours to seconds.']])};
+    [[v*5280/60,'An hour is 3,600 seconds, not 60.'],[v*3600/5280,'Multiply by 5,280 feet per mile and divide by 3,600 seconds per hour.'],[v*5280,'Also convert hours to seconds.']],{f:v=>com(r2(v))})};
 HARD.sat['Ratios and percents']=()=>{
   if(coin()){let a,b;do{a=pick([10,20,25,30,40,50]);b=pick([10,20,25,30,40,50])}while(a===b);const fin=(1+a/100)*(1-b/100)*100;
     return satQ({story:`A store raised the price of a TV by ${a}%. Later it lowered the new price by ${b}%.`,ask:'The final price is what percent of the original price?',ans:fin,show:pct(fin),
@@ -1882,19 +1885,19 @@ function twoWay(){const t=pick(TWOWAY),v=[[ri(8,60),ri(8,60)],[ri(8,60),ri(8,60)
 const prob=(n,d)=>({ans:n/d,show:fr(n,d),tol:.0006,frac:true});
 EASY.sat['Probability and tables']=()=>{const t=twoWay(),j=ri(0,1);
   return satQ({story:t.story,fig:t.fig,ask:`If one of the ${t.u} is chosen at random, what is the probability that it is in the “${t.c[j]}” column?`,...prob(t.Cc[j],t.T),
-    steps:[`Favorable: the “${t.c[j]}” total is ${t.Cc[j]}`,`Possible: all ${t.T} ${t.u}`,`Probability = ${t.Cc[j]}/${t.T} = ${fr(t.Cc[j],t.T)}`],tip:'Probability = favorable ÷ total. Totals are usually in the last row or column.'},
+    steps:[`Favorable: the “${t.c[j]}” total is ${t.Cc[j]}`,`Possible: all ${t.T} ${t.u}`,`Probability = ${frEq(t.Cc[j],t.T)}`],tip:'Probability = favorable ÷ total. Totals are usually in the last row or column.'},
     [[t.Cc[1-j]/t.T,`That is the “${t.c[1-j]}” column.`],[t.Cc[j]/t.Cc[1-j],`Divide by the total, ${t.T}, not by the other column.`],[t.v[0][j]/t.T,'Use the column total, not one cell.']])};
 GEN.sat['Probability and tables']=()=>{const t=twoWay(),i=ri(0,1),j=ri(0,1),cell=t.v[i][j];
   return satQ({story:t.story,fig:t.fig,ask:`If one of the ${t.u} in “${t.r[i]}” is chosen at random, what is the probability that it is in “${t.c[j]}”?`,...prob(cell,t.R[i]),
-    steps:[`Only the “${t.r[i]}” row matters: ${t.R[i]} ${t.u}`,`Of those, ${cell} are in “${t.c[j]}”`,`Probability = ${cell}/${t.R[i]} = ${fr(cell,t.R[i])}`],tip:'“Given” or “of the …” shrinks the total to just that group.'},
+    steps:[`Only the “${t.r[i]}” row matters: ${t.R[i]} ${t.u}`,`Of those, ${cell} are in “${t.c[j]}”`,`Probability = ${frEq(cell,t.R[i])}`],tip:'“Given” or “of the …” shrinks the total to just that group.'},
     [[cell/t.T,`Only the ${t.r[i]} row counts, so divide by ${t.R[i]}, not ${t.T}.`],[cell/t.Cc[j],`Divide by the ${t.r[i]} total, not the ${t.c[j]} total.`],[t.R[i]/t.T,'']])};
 HARD.sat['Probability and tables']=()=>{const t=twoWay(),i=ri(0,1),j=ri(0,1),cell=t.v[i][j];
   if(coin())return satQ({story:t.story,fig:t.fig,ask:`Of the ${t.u} in “${t.c[j]}”, what fraction are in “${t.r[i]}”?`,...prob(cell,t.Cc[j]),
-    steps:[`Only the “${t.c[j]}” column matters: ${t.Cc[j]} ${t.u}`,`Of those, ${cell} are in “${t.r[i]}”`,`${cell}/${t.Cc[j]} = ${fr(cell,t.Cc[j])}`],tip:'Read the question for which group is the whole. That total goes on the bottom.'},
+    steps:[`Only the “${t.c[j]}” column matters: ${t.Cc[j]} ${t.u}`,`Of those, ${cell} are in “${t.r[i]}”`,frEq(cell,t.Cc[j])],tip:'Read the question for which group is the whole. That total goes on the bottom.'},
     [[cell/t.R[i],`The group is “${t.c[j]}”, so divide by its total, ${t.Cc[j]}.`],[cell/t.T,'Use the column total, not the grand total.'],[t.Cc[j]/t.T,'']]);
   const n=t.R[i]+t.Cc[j]-cell;
   return satQ({story:t.story,fig:t.fig,ask:`If one of the ${t.u} is chosen at random, what is the probability that it is in “${t.r[i]}” or in “${t.c[j]}” (or both)?`,...prob(n,t.T),
-    steps:[`“${t.r[i]}” total ${t.R[i]} plus “${t.c[j]}” total ${t.Cc[j]} counts the overlap (${cell}) twice`,`${t.R[i]} + ${t.Cc[j]} − ${cell} = ${n}`,`Probability = ${n}/${t.T} = ${fr(n,t.T)}`],tip:'For “or”, add the two groups and subtract the overlap once.'},
+    steps:[`“${t.r[i]}” total ${t.R[i]} plus “${t.c[j]}” total ${t.Cc[j]} counts the overlap (${cell}) twice`,`${t.R[i]} + ${t.Cc[j]} − ${cell} = ${n}`,`Probability = ${frEq(n,t.T)}`],tip:'For “or”, add the two groups and subtract the overlap once.'},
     [[Math.min(1,(t.R[i]+t.Cc[j])/t.T),'The overlap got counted twice; subtract it once.'],[cell/t.T,'That is “and” (both), not “or”.'],[t.R[i]/t.T,'']])};
 
 /* ---------- geometry and trigonometry ---------- */
@@ -2606,7 +2609,7 @@ function saveUI(){try{localStorage.setItem('ssg-ui',JSON.stringify({subj,view,to
 $('topic').addEventListener('change',e=>{topic=e.target.value;showProblem();saveUI()});
 function makeProblem(sj,name,lvl=LEVEL){if(isCustom(sj))lvl=2;const prev=LEVEL;LEVEL=lvl;let p;
   try{const f=(lvl===1&&EASY[sj][name])||(lvl===3&&HARD[sj][name])||GEN[sj][name];p={name,subj:sj,level:lvl,...f()}}finally{LEVEL=prev}
-  p.steps=p.steps.filter(Boolean);for(const k of ['story','q','ask'])if(typeof p[k]==='string')p[k]=fixArticles(p[k]);return p}
+  p.steps=p.steps.filter((s,i,a)=>s&&s!==a[i-1]);for(const k of ['story','q','ask'])if(typeof p[k]==='string')p[k]=fixArticles(p[k]);return p}
 function fixArticles(t){return t.replace(/\b([Aa]) (\$?)(\d[\d,]*)/g,(m,a,d,n)=>{const w=n.replace(/,/g,''),L=w.length;const an=w[0]==='8'||(L%3===2&&/^1[18]/.test(w));return an?`${a}n ${d}${n}`:m})}
 const KEYS=[['√','√'],['π','π'],['²','²'],['^','^'],['/','/'],['−','-'],['(','('],[')',')']];
 function keysHTML(p,id){if(p.kind==='mc'||p.kind==='coef'||p.kind==='formula'||(p.kind==='text'&&!p.numeric))return '';let k=[...KEYS];if(p.subj==='chem'){k=k.filter(x=>x[0]!=='π');const a=Math.abs(p.ans);if(a&&(a>=1e5||a<1e-3))k.unshift(['×10^','×10^'])}if(p.kind==='poly')k.unshift(['x','x']);if(p.kind==='cx')k.unshift(['i','i']);if(p.kind==='time')k.unshift([':',':']);if(p.kind==='rem')k.unshift(['R',' R ']);
@@ -2859,7 +2862,9 @@ const T={active:null,results:null,sel:new Set(),n:10,name:'',msg:'',confirmEnd:f
 const shuffle=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
 function buildItems(keys,n,lvl){let order=[];while(order.length<n)order=order.concat(shuffle(keys));
   return order.slice(0,n).map(k=>{const [sj,tp]=splitKey(k);return{key:k,p:makeProblem(sj,tp,lvl),raw:'',res:null}})}
-function startTest(name,kind,keys,n,lvl,limit){if(!keys.length)return;
+function startTest(name,kind,keys,n,lvl,limit){
+  // Skip topics that no longer exist (a custom subject or topic deleted or renamed since the test was saved).
+  keys=keys.filter(k=>{const [a,c]=splitKey(k);return GEN[a]&&GEN[a][c]});if(!keys.length)return;
   if(!T.active&&Store.data.activeTest&&!T.okReplace){T.pendingStart=[name,kind,keys,n,lvl,limit];T.confirmDiscard=false;T.results=null;setView('tests');renderTests();window.scrollTo({top:0});return}
   T.okReplace=false;T.pendingStart=null;lvl=lvl||T.level||LEVEL;limit=limit===undefined?(T.limit||0):limit;
   if(T.active)leaveTest(true);const now=Date.now();
@@ -3018,7 +3023,9 @@ const b64e=t=>btoa(unescape(encodeURIComponent(t))),b64d=t=>decodeURIComponent(e
 function backupObj(){const d=JSON.parse(JSON.stringify(Store.data));d.lastBackup=Date.now();return{app:'subject-study-guide',v:1,name:Store.mode==='cloud'?'My progress':Store.local.current,saved:Date.now(),data:d,custom:JSON.parse(JSON.stringify(CUS.subjects))}}
 function parseBackup(txt){txt=String(txt||'').trim();let o;
   try{o=txt.startsWith('{')?JSON.parse(txt):JSON.parse(b64d(txt.replace(/^SSG1:/i,'').replace(/\s+/g,'')))}catch(e){return null}
-  if(!o||o.app!=='subject-study-guide'||!o.data)return null;o.data=clean(o.data);return o}
+  if(!o||o.app!=='subject-study-guide'||!o.data)return null;o.data=clean(o.data);
+  // An unfinished test holds problem HTML, so a doctored code could inject script through it. Backups don't carry one.
+  delete o.data.activeTest;return o}
 function bkSummary(d){const n=Object.values(d.topics).reduce((a,t)=>a+(t.t||0),0);return `${n} problem${n===1?'':'s'} answered, ${d.tests.length} test${d.tests.length===1?'':'s'}, ${d.presets.length} saved test${d.presets.length===1?'':'s'}`}
 function bkWhen(){const last=Store.data.lastBackup;if(!last)return 'No backup yet. A backup lets you move progress to another device or browser, or keep it safe if browser data gets cleared.';
   const days=Math.floor((Date.now()-last)/86400000);return `Last backup: ${days===0?'today':days===1?'yesterday':days+' days ago'}.${days>=7?' Consider saving a fresh one.':''}`}
@@ -3222,7 +3229,9 @@ function cmSay(m,cls){CM.msg=m;CM.cls=cls||'neutral'}
 const sayIn=(S,m,cls)=>{S.msg=m;S.cls=cls||'neutral'};
 const msgHTML=S=>S.msg?`<div class="fb ${S.cls}" role="status">${S.msg}</div>`:'';
 const cmMsg=()=>msgHTML(CM);
-const noSpace='There isn’t enough storage space for that. Remove some pictures or subjects and try again.';
+// If the browser blocks saving altogether (some private-browsing modes), say so instead of blaming space.
+const noSpace=(()=>{const full='There isn’t enough storage space for that. Remove some pictures or subjects and try again.';
+  try{localStorage.setItem('ssg-t','1');localStorage.removeItem('ssg-t');return full}catch(e){return /quota/i.test(e.name+' '+e.message)?full:'This browser isn’t letting the site save anything (for example, in private browsing), so subjects can’t be saved here.'}})();
 function renderMgr(){const b=$('cmbody');
   if(CM.screen==='item'&&CM.draft&&findSub(CM.sid))b.innerHTML=mgrItem();
   else if(CM.screen==='edit'&&findSub(CM.sid))b.innerHTML=mgrEdit();
@@ -3236,7 +3245,7 @@ function mgrList(){const used=JSON.stringify(CUS).length/1e6;
   ${CM.creating?`<form class="card" id="cmnewf"><label class="field">Subject name<input type="text" id="cmname" maxlength="40" placeholder="e.g. Spanish vocabulary" autocomplete="off"></label>
     <div class="actions"><button class="btn" type="submit">Create</button><button class="btn ghost" type="button" data-cm="cancelnew">Cancel</button></div></form>`:''}
   ${CM.importOpen?`<div class="card"><h3 class="h3">Add a shared subject</h3>
-    <label class="field">Paste a share code<textarea id="cmcode" class="codebox" rows="3" placeholder="SSGS1:…"></textarea></label>
+    <label class="field">Paste a share code<textarea id="cmcode" class="codebox" rows="3" placeholder="SSGS2:…"></textarea></label>
     <div class="actions"><button class="btn" type="button" data-cm="usecode">Add subject</button><button class="btn ghost" type="button" data-cm="pickfile">Choose a subject file</button><button class="linkbtn" type="button" data-cm="cancelimport">Cancel</button></div>
     <input type="file" id="cmfile" accept=".json,.txt,application/json,text/plain" hidden></div>`:''}
   ${CUS.subjects.length?CUS.subjects.map(s=>{const qs=s.items.filter(i=>i.type!=='card'),cards=s.items.length-qs.length,tops=new Set(qs.map(i=>i.topic)).size;

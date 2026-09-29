@@ -176,7 +176,7 @@ function Offline({ onRetry }) {
       <View style={[styles.offlineIcon, { backgroundColor: theme.colors.primaryContainer }]}>
         <Icon source="wifi-off" size={40} color={theme.colors.primary} />
       </View>
-      <Text variant="titleLarge" style={styles.center}>Can't reach the study guide</Text>
+      <Text variant="titleLarge" style={styles.center}>Can't reach Proof</Text>
       <Text variant="bodyMedium" style={[styles.center, { color: theme.colors.onSurfaceVariant }]}>
         Check your internet connection and try again. Your progress is saved on this phone.
       </Text>
