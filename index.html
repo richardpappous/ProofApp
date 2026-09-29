@@ -1374,6 +1374,274 @@ GEN.elem['Perimeter and area']=()=>{
   const W=ri(8,16),H=ri(6,12),cw=ri(2,W-4),ch=ri(2,H-3),A=W*H-cw*ch;
   return{fig:figPoly([[0,0],[W,0],[W,H-ch],[W-cw,H-ch],[W-cw,H],[0,H]],[W,H-ch,'','',W-cw,H]),q:'this L-shaped room (all corners are right angles)',ask:'Find the area of',ans:A,steps:[`Split it into two rectangles`,`Bottom: ${W} × ${H-ch} = ${W*(H-ch)}`,`Top: ${W-cw} × ${ch} = ${(W-cw)*ch} (the left side is ${H}, so this part is ${H} − ${H-ch} = ${ch} tall)`,`Total: ${W*(H-ch)} + ${(W-cw)*ch} = ${A}`],tip:'Split composite shapes into rectangles. There is usually more than one way, and any split works.'}};
 
+/* ================= Chemistry ================= */
+SUBJ.push({id:'chem',name:'Chemistry'});
+NOTES.chem='Use the atomic masses given in each problem. Type scientific notation as 6.02×10^23 (tap ×10^) or 6.02e23. Units are optional.';
+GEN.chem={};EASY.chem={};HARD.chem={};
+// Atomic masses in g/mol, rounded to the hundredth like most school periodic tables.
+const AM={H:1.01,B:10.81,C:12.01,N:14.01,O:16.00,F:19.00,Na:22.99,Mg:24.31,Al:26.98,P:30.97,S:32.07,Cl:35.45,K:39.10,Ca:40.08,Fe:55.85,Cu:63.55,Zn:65.38,Ba:137.33};
+const ELN={H:'hydrogen',B:'boron',C:'carbon',N:'nitrogen',O:'oxygen',F:'fluorine',Na:'sodium',Mg:'magnesium',Al:'aluminum',P:'phosphorus',S:'sulfur',Cl:'chlorine',K:'potassium',Ca:'calcium',Fe:'iron',Cu:'copper',Zn:'zinc',Ba:'barium'};
+const AVO=6.02e23;
+// Chemical formulas: 'Ca(OH)2' → {Ca:1,O:2,H:2}, or null if the text isn't a formula.
+function atomsOf(f){const s=String(f).normalize('NFKC').replace(/\s+/g,'');let i=0;
+  function group(){const out={};
+    while(i<s.length&&s[i]!==')'){let part;
+      if(s[i]==='('){i++;part=group();if(!part||s[i++]!==')')return null}
+      else{const m=s.slice(i).match(/^[A-Z][a-z]?/);if(!m)return null;i+=m[0].length;part={[m[0]]:1}}
+      const d=s.slice(i).match(/^\d+/),k=d?+d[0]:1;if(d)i+=d[0].length;if(!k)return null;
+      for(const e in part)out[e]=(out[e]||0)+part[e]*k}
+    return out}
+  const r=group();return r&&i===s.length&&Object.keys(r).length?r:null}
+// Students often type formulas in lowercase on phones: "co2" is read as CO2.
+const fmlCase=raw=>{const s=String(raw).normalize('NFKC').replace(/\s+/g,'');return /[A-Z]/.test(s)?s:s.toUpperCase()};
+// Same atoms in any order match: CH2O = H2CO = C1H2O1.
+const fmlKey=raw=>{const a=atomsOf(fmlCase(raw));return a?Object.keys(a).sort().map(e=>e+a[e]).join(''):''};
+const cf=f=>f.replace(/\d/g,d=>'₀₁₂₃₄₅₆₇₈₉'[d]);
+const mmx=f=>{const a=atomsOf(f);let t=0;for(const e in a)t+=a[e]*AM[e];return t};
+const MMr=f=>r2(mmx(f)),f2=x=>x.toFixed(2);
+const elsOf=(...fs)=>[...new Set(fs.flatMap(f=>Object.keys(atomsOf(f))))];
+const mlist=els=>els.map(e=>`${e} = ${f2(AM[e])}`).join(', ');
+const mmSteps=f=>{const a=atomsOf(f),ks=Object.keys(a);return[`Count the atoms in ${cf(f)}: ${ks.map(e=>`${a[e]} ${e}`).join(', ')}`,`Molar mass = ${ks.map(e=>`${a[e]} × ${f2(AM[e])}`).join(' + ')} = ${f2(MMr(f))} g/mol`]};
+const andList=a=>a.length<3?a.join(' and '):a.slice(0,-1).join(', ')+' and '+a[a.length-1];
+const supN=n=>(n<0?'⁻':'')+String(Math.abs(n)).split('').map(d=>'⁰¹²³⁴⁵⁶⁷⁸⁹'[d]).join('');
+function sci(x,sf=3){let e=Math.floor(Math.log10(Math.abs(x))),m=+(x/10**e).toFixed(sf-1);if(Math.abs(m)>=10){m/=10;e++}return `${m.toFixed(sf-1)} × 10${supN(e)}`}
+const ans1=n=>n===1?'':'s';
+
+/* ---------- significant figures ---------- */
+function sigCount(s){s=s.replace(/^-/,'');if(s.includes('.'))return s.replace('.','').replace(/^0+/,'').length;return s.replace(/^0+/,'').replace(/0+$/,'').length}
+const digs=n=>Array.from({length:n},()=>ri(1,9)).join('');
+EASY.chem['Significant figures']=()=>{const L=ri(2,5),d=digs(L),at=ri(0,L-1),s=at?d.slice(0,at)+'.'+d.slice(at):d;
+  return{q:s,ask:'How many significant figures?',ans:L,steps:['Every digit is nonzero, and nonzero digits always count',`${s} has ${L} significant figures`],tip:'Nonzero digits always count. The rules are really about zeros.'}};
+GEN.chem['Significant figures']=()=>{const t=pick(['lead','mid','trail','whole']);let s,why;
+  if(t==='lead'){s='0.'+'0'.repeat(ri(0,3))+digs(ri(1,3))+(coin()?'0':'');why=['Leading zeros (before the first nonzero digit) only place the decimal point, so they never count',s.endsWith('0')?'The final zero comes after the decimal point, so it counts':''];}
+  else if(t==='mid'){s=digs(1)+'0'.repeat(ri(1,2))+digs(1)+(coin()?'.'+digs(ri(1,2)):'');why=['Zeros between nonzero digits always count'];}
+  else if(t==='trail'){s=digs(ri(1,3))+'.'+(coin()?digs(1):'')+'0'.repeat(ri(1,2));why=['Zeros at the end count when the number has a decimal point'];}
+  else{s=digs(ri(1,2))+'0'.repeat(ri(2,3));why=['Zeros at the end of a whole number with no decimal point only show place value, so they don’t count'];}
+  const n=sigCount(s);
+  return{q:s,ask:'How many significant figures?',ans:n,steps:[...why,`${s} has ${n} significant figure${ans1(n)}`],tip:'Leading zeros never count, zeros between digits always count, and zeros at the end count only with a decimal point.'}};
+HARD.chem['Significant figures']=()=>{
+  const mk=()=>pick([()=>(ri(11,99)/10).toFixed(1),()=>(ri(101,999)/100).toFixed(2),()=>(ri(1001,9999)/100).toFixed(2),()=>String(ri(1,9)*100+ri(1,9)*10+ri(1,9))])();
+  if(coin()){let a,b,op,x,n;
+    do{a=mk();b=mk();op=pick(['×','÷']);x=op==='×'?+a*+b:+a/+b;n=Math.min(sigCount(a),sigCount(b))}
+    while(sigCount(a)===sigCount(b)||Math.abs((x/10**Math.floor(Math.log10(x))*10**(n-1))%1-.5)<1e-6);
+    const ans=+x.toPrecision(n),show=/e/.test(ans.toPrecision(n))?sci(ans,n):ans.toPrecision(n);
+    return{tol:1e-5,q:`${a} ${op} ${b}`,ask:'Compute, then round to the correct number of significant figures',ans,show,
+      steps:[`${a} has ${sigCount(a)} significant figures and ${b} has ${sigCount(b)}`,`For × and ÷, keep the fewest significant figures: ${n}`,`Calculator: ${+x.toPrecision(8)}`,`Rounded to ${n} significant figures: ${show}`],tip:'Multiplying or dividing: count significant figures. Adding or subtracting: count decimal places.'}}
+  let dA,dB,A,B,S,u,op;
+  do{dA=pick([2,3]);dB=ri(0,dA-1);A=ri(10**dA+1,99*10**dA);B=ri(10**dA,50*10**dA);u=10**(dA-dB);B=Math.round(B/u)*u;op=pick(['+','−']);if(op==='−'&&B>A)[A,B]=[B,A];S=op==='+'?A+B:A-B}
+  while(S<=0||S%u*2===u||B===0);
+  const sa=(A/10**dA).toFixed(dA),sb=(B/10**dA).toFixed(dB),ans=Math.round(S/u)/10**dB,show=ans.toFixed(dB),pl=d=>d?`${d} decimal place${ans1(d)}`:'no decimal places';
+  return{tol:1e-5,q:`${sa} ${op} ${sb}`,ask:'Compute, then round to the correct number of significant figures',ans,show,
+    steps:[`${sa} has ${pl(dA)} and ${sb} has ${pl(dB)}`,`For + and −, keep the fewest decimal places: ${pl(dB)}`,`Calculator: ${(S/10**dA).toFixed(dA)}`,`Rounded: ${show}`],tip:'Adding or subtracting: line up the decimal points. The answer can’t be more precise than the least precise measurement.'}};
+
+/* ---------- atomic structure ---------- */
+const ELS=[['hydrogen','H',1,1],['helium','He',2,4],['lithium','Li',3,7],['carbon','C',6,12],['nitrogen','N',7,14],['oxygen','O',8,16],['fluorine','F',9,19],['neon','Ne',10,20],['sodium','Na',11,23],['magnesium','Mg',12,24],['aluminum','Al',13,27],['silicon','Si',14,28],['phosphorus','P',15,31],['sulfur','S',16,32],['chlorine','Cl',17,35],['argon','Ar',18,40],['potassium','K',19,39],['calcium','Ca',20,40],['iron','Fe',26,56],['copper','Cu',29,64],['zinc','Zn',30,65],['bromine','Br',35,80],['silver','Ag',47,108],['iodine','I',53,127],['gold','Au',79,197],['lead','Pb',82,207],['uranium','U',92,238]];
+const IONS=[['Li',1],['Na',1],['K',1],['Ag',1],['Mg',2],['Ca',2],['Zn',2],['Cu',2],['Al',3],['Fe',3],['F',-1],['Cl',-1],['Br',-1],['I',-1],['O',-2],['S',-2],['N',-3],['P',-3]];
+const ionStr=(s,q)=>s+(Math.abs(q)===1?'':supN(Math.abs(q)))+(q>0?'⁺':'⁻');
+EASY.chem['Atomic structure']=()=>{const [nm,sy,Z]=pick(ELS),w=pick(['protons','electrons']);
+  return{story:`${cap(nm)} (${sy}) has atomic number ${Z}.`,ask:`How many ${w} are in a neutral ${nm} atom?`,ans:Z,
+    steps:[`The atomic number is the number of protons: ${Z}`,w==='electrons'?`A neutral atom has as many electrons as protons: ${Z}`:`So there ${Z===1?'is 1 proton':`are ${Z} protons`}`],tip:'The atomic number identifies the element and never changes. Electrons equal protons only when the atom is neutral.'}};
+GEN.chem['Atomic structure']=()=>{
+  if(coin()){const [nm,,Z,A]=pick([...ELS,['carbon','C',6,14],['chlorine','Cl',17,37],['uranium','U',92,235],['hydrogen','H',1,3],['oxygen','O',8,18],['iron','Fe',26,54]]),n=A-Z;
+    return{story:`An atom of ${nm}-${A} has atomic number ${Z}.`,ask:'How many neutrons does it have?',ans:n,steps:[`The mass number ${A} counts protons + neutrons`,`Protons = atomic number = ${Z}`,`Neutrons = ${A} − ${Z} = ${n}`],tip:`The number in the name (${nm}-${A}) is the mass number. Subtract the atomic number to get neutrons.`}}
+  const [sy,q]=pick(IONS),[nm,,Z]=ELS.find(e=>e[1]===sy),e=Z-q,io=ionStr(sy,q),k=Math.abs(q);
+  return{story:`${cap(nm)} has atomic number ${Z} and forms the ion ${io}.`,ask:`How many electrons does ${io} have?`,ans:e,
+    steps:[`A neutral ${nm} atom has ${Z} electrons`,q>0?`A ${k}+ charge means it lost ${k} electron${ans1(k)}`:`A ${k}− charge means it gained ${k} electron${ans1(k)}`,`${Z} ${q>0?'−':'+'} ${k} = ${e} electrons`],tip:'Positive ions lost electrons and negative ions gained them. The number of protons never changes.'}};
+const ISO=[['chlorine',[[34.97,75.78],[36.97,24.22]]],['copper',[[62.93,69.15],[64.93,30.85]]],['boron',[[10.01,19.9],[11.01,80.1]]],['gallium',[[68.93,60.11],[70.92,39.89]]],['lithium',[[6.02,7.59],[7.02,92.41]]],['bromine',[[78.92,50.69],[80.92,49.31]]]];
+HARD.chem['Atomic structure']=()=>{
+  if(coin()){let nm,iso;if(coin())[nm,iso]=pick(ISO);else{const a=ri(20,80),p=pick([10,20,25,40,60,75,80,90]);nm='element X';iso=[[a,p],[a+ri(1,3),100-p]]}
+    const avg=r2(iso.reduce((t,[m,p])=>t+m*p/100,0));
+    return{tol:.011,story:`Naturally occurring ${nm} is ${andList(iso.map(([m,p])=>`${p}% an isotope with mass ${m} u`))}.`,ask:`What is the average atomic mass of ${nm}, in u? Round to the hundredth.`,ans:avg,show:f2(avg),
+      steps:['Change each percent to a decimal and use it to weight that isotope’s mass',iso.map(([m,p])=>`${m} × ${+(p/100).toFixed(4)}`).join(' + '),`= ${f2(avg)} u`],tip:'The average always lands closer to the more common isotope. That’s a quick check.'}}
+  const [nm,[[m1,p1],[m2,p2]]]=pick(ISO),avg=r2((m1*p1+m2*p2)/100),x=r1((m2-avg)/(m2-m1)*100);
+  return{tol:.21,story:`${cap(nm)} has two isotopes, with masses ${m1} u and ${m2} u. Its average atomic mass is ${f2(avg)} u.`,ask:'What percent of its atoms are the lighter isotope? Round to the tenth.',ans:x,
+    steps:['Let x be the fraction that is the lighter isotope, so 1 − x is the heavier one',`${m1}x + ${m2}(1 − x) = ${f2(avg)}`,`x = (${m2} − ${f2(avg)}) ÷ (${m2} − ${m1}) = ${r2(m2-avg)} ÷ ${r2(m2-m1)}`,`x ≈ ${x}%`],tip:'Set up the weighted average with one unknown. The two fractions must add to 1.'}};
+
+/* ---------- molar mass ---------- */
+const MM_E=['H2O','CO2','NaCl','O2','N2','CH4','NH3','HCl','KCl','MgO','CO','CaO'],
+  MM_M=['C6H12O6','CaCO3','H2SO4','NaOH','C2H5OH','NaHCO3','HNO3','KNO3','C3H8','Fe2O3','Al2O3','SO2'],
+  MM_H=['Ca(OH)2','Mg(NO3)2','Al2(SO4)3','(NH4)2SO4','Ca3(PO4)2','Fe(NO3)3','Cu(NO3)2','Ba(OH)2','Mg3(PO4)2','Al(OH)3'];
+const molarMass=list=>()=>{const f=pick(list),M=MMr(f);
+  return{tol:.051,q:cf(f),ask:`Find the molar mass in g/mol (${mlist(elsOf(f))})`,ans:M,show:f2(M),
+    steps:[f.includes('(')?'The number after the parentheses multiplies every atom inside them':'',...mmSteps(f)],tip:'Multiply each atomic mass by how many of that atom there are, then add. A small table keeps the counts straight.'}};
+EASY.chem['Molar mass']=molarMass(MM_E);GEN.chem['Molar mass']=molarMass(MM_M);HARD.chem['Molar mass']=molarMass(MM_H);
+
+/* ---------- moles ---------- */
+EASY.chem['Moles and mass']=()=>{const f=pick(MM_E),M=MMr(f),n=pick([0.5,1.5,2,2.5,3,4,5]),m=r2(n*M);
+  if(coin())return{tol:.011,story:`A sample of ${cf(f)} (molar mass ${f2(M)} g/mol) has a mass of ${f2(m)} g.`,ask:'How many moles is that?',ans:n,steps:['Moles = mass ÷ molar mass',`${f2(m)} ÷ ${f2(M)} = ${n} mol`],tip:'Molar mass is grams per mole, so dividing grams by it leaves moles.'};
+  return{tol:.051,story:`A reaction needs ${n} mol of ${cf(f)} (molar mass ${f2(M)} g/mol).`,ask:'How many grams is that?',ans:m,show:f2(m),steps:['Mass = moles × molar mass',`${n} × ${f2(M)} = ${f2(m)} g`],tip:'Let the units decide: (mol) × (g/mol) leaves grams.'}};
+GEN.chem['Moles and mass']=()=>{const f=pick([...MM_E,...MM_M]),M=MMr(f);
+  if(coin()){const m=ri(10,250),n=r2(m/M);return{tol:.011,story:`A chemist measures out ${m} g of ${cf(f)}.`,ask:`How many moles is that? Round to the hundredth. (${mlist(elsOf(f))})`,ans:n,steps:[...mmSteps(f),`Moles = ${m} ÷ ${f2(M)} ≈ ${f2(n)} mol`],tip:'Find the molar mass first, then divide. Keep extra digits until the last step.'}}
+  const n=pick([0.25,0.5,0.75,1.5,2,2.5,3,4]),m=r2(n*M);
+  return{tol:.051,story:`A reaction needs ${n} mol of ${cf(f)}.`,ask:`How many grams is that? (${mlist(elsOf(f))})`,ans:m,show:f2(m),steps:[...mmSteps(f),`Mass = ${n} × ${f2(M)} = ${f2(m)} g`],tip:'Grams = moles × molar mass.'}};
+HARD.chem['Moles and mass']=()=>{const f=pick(['H2O','CO2','CH4','NH3','C6H12O6','H2SO4','Fe2O3','Al2O3','CaCO3','C3H8']),a=atomsOf(f),e=pick(Object.keys(a)),M=MMr(f),k=a[e],per=`Each ${cf(f)} has ${k} ${e} atom${ans1(k)}`;
+  if(coin()){const n=pick([0.5,1.5,2,2.5,3,4]),ne=r2(n*k),g=r2(ne*AM[e]);
+    return{tol:.051,story:`A sample contains ${n} mol of ${cf(f)}.`,ask:`How many grams of ${ELN[e]} are in it? (${e} = ${f2(AM[e])})`,ans:g,show:f2(g),steps:[`${per}, so there are ${n} × ${k} = ${ne} mol of ${e}`,`${ne} × ${f2(AM[e])} = ${f2(g)} g`],tip:'Subscripts are a mole ratio inside the formula: 1 mol of H₂O holds 2 mol of H atoms.'}}
+  const m=ri(20,200),x=m/M,ne=r2(x*k);
+  return{tol:r2(.011+.005*k),story:`A sample of ${cf(f)} has a mass of ${m} g.`,ask:`How many moles of ${e} atoms does it contain? Round to the hundredth. (${mlist(elsOf(f))})`,ans:ne,
+    steps:[...mmSteps(f),`Moles of ${cf(f)}: ${m} ÷ ${f2(M)} = ${x.toFixed(4)} mol`,`${per}: ${x.toFixed(4)} × ${k} ≈ ${f2(ne)} mol of ${e}`],tip:'Grams → moles of the compound → moles of the atom, using the subscript.'}};
+const unitsOf=f=>['NaCl','CaCO3','KCl','MgO'].includes(f)?'formula units':'molecules';
+EASY.chem['Moles and particles']=()=>{const n=pick([0.5,1.5,2,3,4,5,10]),x=n*AVO,f=pick(['H2O','CO2','NH3','CH4','O2','N2']);
+  return{tol:x*.006,story:`A container holds ${n} mol of ${cf(f)}.`,ask:'How many molecules is that?',ans:x,show:sci(x),steps:['1 mol = 6.02 × 10²³ particles (Avogadro’s number)',`${n} × 6.02 × 10²³ = ${sci(x)} molecules`],tip:'A mole is a counting number, like a dozen, only much bigger. Type 10²³ as ×10^23.'}};
+GEN.chem['Moles and particles']=()=>{
+  if(coin()){const n=pick([0.25,0.5,1.5,2,2.5,3,4,5]),x=n*AVO,f=pick(['H2O','CO2','NH3','CH4','C6H12O6','NaCl']),u=unitsOf(f);
+    return{tol:.011,story:`A sample contains ${sci(x,4)} ${u} of ${cf(f)}.`,ask:'How many moles is that?',ans:n,steps:['Moles = particles ÷ 6.02 × 10²³',`${sci(x,4)} ÷ 6.02 × 10²³ = ${n} mol`],tip:'Particles to moles: divide by Avogadro’s number. Moles to particles: multiply.'}}
+  const f=pick(['H2O','CO2','NH3','CH4','C3H8','H2SO4']),a=atomsOf(f),e=pick(Object.keys(a)),n=pick([0.5,1,2,3,5]),k=a[e],x=n*k*AVO;
+  return{tol:x*.006,story:`A flask holds ${n} mol of ${cf(f)}.`,ask:`How many ${ELN[e]} atoms are in it?`,ans:x,show:sci(x),steps:[`Each ${cf(f)} has ${k} ${e} atom${ans1(k)}: ${n} × ${k} = ${n*k} mol of ${e}`,`${n*k} × 6.02 × 10²³ = ${sci(x)} atoms`],tip:'Count atoms per molecule first, then multiply by Avogadro’s number.'}};
+HARD.chem['Moles and particles']=()=>{const f=pick(['H2O','CO2','NH3','CH4','C6H12O6','NaCl','CaCO3','O2']),M=MMr(f),m=ri(5,150),n=m/M,x=n*AVO,u=unitsOf(f);
+  return{tol:x*.01,story:`A sample of ${cf(f)} has a mass of ${m} g.`,ask:`How many ${u} is that? (${mlist(elsOf(f))})`,ans:x,show:sci(x),
+    steps:[...mmSteps(f),`Moles: ${m} ÷ ${f2(M)} = ${n.toFixed(4)} mol`,`${n.toFixed(4)} × 6.02 × 10²³ = ${sci(x)} ${u}`],tip:'Grams → moles → particles. Molar mass is the bridge from grams; Avogadro’s number is the bridge to particles.'}};
+
+/* ---------- composition and formulas ---------- */
+EASY.chem['Percent composition']=()=>{const w=ri(2,10)*10,p=pick([10,20,25,30,40,50,60,75,80]),part=w*p/100,e=pick(['carbon','oxygen','iron','sulfur','nitrogen','copper']);
+  return{story:`A ${w}.0 g sample of a compound contains ${part.toFixed(1)} g of ${e}.`,ask:`What percent of the sample’s mass is ${e}?`,ans:p,steps:['Percent = part ÷ whole × 100',`${part.toFixed(1)} ÷ ${w}.0 × 100 = ${p}%`],tip:'Percent by mass is part over whole, like any other percent.'}};
+GEN.chem['Percent composition']=()=>{const f=pick(['H2O','CO2','NH3','CH4','NaCl','CaCO3','Fe2O3','H2SO4','C6H12O6','NaOH','Al2O3','KNO3']),a=atomsOf(f),e=pick(Object.keys(a)),M=MMr(f),em=a[e]*AM[e],p=r1(em/M*100);
+  return{tol:.11,story:`What percent of the mass of ${cf(f)} is ${ELN[e]}?`,ask:`Round to the tenth of a percent. (${mlist(elsOf(f))})`,ans:p,
+    steps:[...mmSteps(f),`${cap(ELN[e])}: ${a[e]} × ${f2(AM[e])} = ${f2(em)} g per mole`,`${f2(em)} ÷ ${f2(M)} × 100 ≈ ${p}%`],tip:'Use one mole of the compound: the element’s total mass over the whole molar mass.'}};
+HARD.chem['Percent composition']=()=>{const f=pick(['Fe2O3','CaCO3','H2O','CO2','NaCl','C6H12O6','Al2O3','CuO','H2SO4']),a=atomsOf(f),e=pick(Object.keys(a)),M=MMr(f),fr0=a[e]*AM[e]/M,m=ri(10,200),g=r1(m*fr0);
+  return{tol:.16,story:`How many grams of ${ELN[e]} are in ${m} g of ${cf(f)}?`,ask:`Round to the tenth. (${mlist(elsOf(f))})`,ans:g,
+    steps:[...mmSteps(f),`Fraction that is ${e}: ${f2(a[e]*AM[e])} ÷ ${f2(M)} = ${fr0.toFixed(4)}`,`${m} × ${fr0.toFixed(4)} ≈ ${g} g`],tip:'Find the element’s mass fraction from the formula, then take that fraction of the sample.'}};
+const fmlAns=f=>({kind:'formula',fml:f,ansList:[fmlKey(f)],ans:0,show:cf(f)});
+EASY.chem['Empirical formulas']=()=>{const [m,e]=pick([['C6H12O6','CH2O'],['C2H4','CH2'],['H2O2','HO'],['C4H10','C2H5'],['N2O4','NO2'],['C6H6','CH'],['C8H18','C4H9'],['B2H6','BH3'],['P4O10','P2O5'],['C2H6','CH3'],['C3H6','CH2'],['C2H4O2','CH2O']]),a=atomsOf(m),ks=Object.keys(a),g=ks.map(k=>a[k]).reduce(gcd);
+  return{...fmlAns(e),q:cf(m),ask:'Write the empirical formula (the simplest whole-number ratio)',steps:[`Subscripts: ${ks.map(k=>`${k} ${a[k]}`).join(', ')}`,`Divide each by their greatest common factor, ${g}`,`Empirical formula: ${cf(e)}`],tip:'The empirical formula keeps the same ratio with the smallest whole numbers.'}};
+GEN.chem['Empirical formulas']=()=>{const f=pick(['CH4','NO2','SO3','CO2','N2O','NH3','Fe2O3','Al2O3','P2O5','CH2O','CH3','CH2','CuO','Cu2O','MgCl2','K2O','CaCl2','Na2O']),a=atomsOf(f),ks=Object.keys(a),M=mmx(f),pc=ks.map(k=>r1(a[k]*AM[k]/M*100)),
+    mol=ks.map((k,i)=>pc[i]/AM[k]),lo=Math.min(...mol),rat=mol.map(x=>x/lo);let mult=1;while(mult<6&&!rat.every(x=>Math.abs(x*mult-Math.round(x*mult))<.1))mult++;
+  const steps=['Assume 100 g, so each percent becomes grams',`Moles: ${ks.map((k,i)=>`${k} ${pc[i]} ÷ ${f2(AM[k])} = ${mol[i].toFixed(3)}`).join(';  ')}`,`Divide by the smallest (${lo.toFixed(3)}): ${ks.map((k,i)=>`${k} ${rat[i].toFixed(2)}`).join(', ')}`];
+  if(mult>1)steps.push(`Not all whole numbers yet, so multiply by ${mult}: ${ks.map((k,i)=>`${k} ${Math.round(rat[i]*mult)}`).join(', ')}`);
+  steps.push(`Empirical formula: ${cf(f)}`);
+  return{...fmlAns(f),story:`A compound is ${andList(ks.map((k,i)=>`${pc[i]}% ${ELN[k]}`))} by mass.`,ask:`What is its empirical formula? (${mlist(ks)})`,steps,tip:'Percent → grams → moles → divide by the smallest. A ratio like 1.5 means multiply everything by 2.'}};
+HARD.chem['Empirical formulas']=()=>{const [e,m]=pick([['CH2O','C6H12O6'],['CH','C6H6'],['CH2','C3H6'],['NO2','N2O4'],['CH3','C2H6'],['C2H5','C4H10'],['P2O5','P4O10'],['HO','H2O2'],['CH2O','C2H4O2'],['C4H9','C8H18'],['CH2','C5H10'],['BH3','B2H6']]),Me=mmx(e),Mm=MMr(m),k=Math.round(Mm/Me);
+  return{...fmlAns(m),story:`A compound has the empirical formula ${cf(e)} and a molar mass of ${f2(Mm)} g/mol.`,ask:`What is its molecular formula? (${mlist(elsOf(e))})`,
+    steps:[`Empirical formula mass of ${cf(e)}: ${f2(Me)} g/mol`,`${f2(Mm)} ÷ ${f2(Me)} ≈ ${k}`,`Multiply every subscript by ${k}: ${cf(m)}`],tip:'The molecular formula is a whole-number multiple of the empirical formula. The molar mass tells you which multiple.'}};
+
+/* ---------- reactions ---------- */
+// lv: the level each equation is used at when balancing. Every one is checked for balance by the tests.
+const EQS=[
+ {r:['H2','O2'],p:['H2O'],c:[2,1,2],lv:1,lead:'Oxygen first: 2 O on the left needs 2 H₂O. That makes 4 H, so 2 H₂.'},
+ {r:['N2','H2'],p:['NH3'],c:[1,3,2],lv:1,lead:'2 N on the left needs 2 NH₃. That makes 6 H, so 3 H₂.'},
+ {r:['Na','Cl2'],p:['NaCl'],c:[2,1,2],lv:1,lead:'2 Cl on the left needs 2 NaCl, which needs 2 Na.'},
+ {r:['Mg','O2'],p:['MgO'],c:[2,1,2],lv:1,lead:'2 O on the left needs 2 MgO, which needs 2 Mg.'},
+ {r:['H2','Cl2'],p:['HCl'],c:[1,1,2],lv:1,lead:'2 H and 2 Cl on the left make 2 HCl.'},
+ {r:['K','Cl2'],p:['KCl'],c:[2,1,2],lv:1,lead:'2 Cl on the left needs 2 KCl, which needs 2 K.'},
+ {r:['CaCO3'],p:['CaO','CO2'],c:[1,1,1],lv:1,lead:'Count each element: 1 Ca, 1 C and 3 O on each side. It is already balanced, so every coefficient is 1.'},
+ {r:['CH4','O2'],p:['CO2','H2O'],c:[1,2,1,2],lv:2,lead:'Carbon first (1 CO₂), then hydrogen (4 H needs 2 H₂O), then oxygen last: 2 + 2 = 4 O, so 2 O₂.'},
+ {r:['Al','O2'],p:['Al2O3'],c:[4,3,2],lv:2,lead:'O is 2 on the left and 3 on the right. Use 6 O: 3 O₂ and 2 Al₂O₃. Then 4 Al.'},
+ {r:['Fe','O2'],p:['Fe2O3'],c:[4,3,2],lv:2,lead:'Use 6 O: 3 O₂ and 2 Fe₂O₃. Then 4 Fe.'},
+ {r:['KClO3'],p:['KCl','O2'],c:[2,2,3],lv:2,lead:'O is 3 on the left and 2 on the right, so use 6 O: 2 KClO₃ and 3 O₂. Then 2 KCl.'},
+ {r:['Zn','HCl'],p:['ZnCl2','H2'],c:[1,2,1,1],lv:2,lead:'ZnCl₂ has 2 Cl, so use 2 HCl. That gives 2 H, which is one H₂.'},
+ {r:['Na','H2O'],p:['NaOH','H2'],c:[2,2,2,1],lv:2,lead:'H₂ comes in pairs. Try 2 H₂O: that makes 2 NaOH and 1 H₂ (4 H on each side). Then 2 Na.'},
+ {r:['C3H8','O2'],p:['CO2','H2O'],c:[1,5,3,4],lv:3,lead:'C first: 3 CO₂. H next: 8 H needs 4 H₂O. O last: 6 + 4 = 10 O, so 5 O₂.'},
+ {r:['C2H6','O2'],p:['CO2','H2O'],c:[2,7,4,6],lv:3,lead:'C: 2 CO₂. H: 3 H₂O. O: 4 + 3 = 7, which would need 3.5 O₂. Double everything to clear the half.'},
+ {r:['Fe2O3','CO'],p:['Fe','CO2'],c:[1,3,2,3],lv:3,lead:'2 Fe on the right. Each CO picks up one O to become CO₂, and Fe₂O₃ has 3 O, so 3 CO and 3 CO₂.'},
+ {r:['Al','HCl'],p:['AlCl3','H2'],c:[2,6,2,3],lv:3,lead:'AlCl₃ has 3 Cl and H₂ needs pairs, so use 6 HCl: 2 AlCl₃ and 3 H₂. Then 2 Al.'},
+ {r:['C6H12O6','O2'],p:['CO2','H2O'],c:[1,6,6,6],lv:3,lead:'C: 6 CO₂. H: 12 H needs 6 H₂O. O: 12 + 6 = 18 on the right; glucose brings 6, so 12 more from 6 O₂.'},
+ {r:['NH3','O2'],p:['NO','H2O'],c:[4,5,4,6],lv:3,lead:'2 NH₃ make 3 H₂O and 2 NO. That is 2 + 3 = 5 O, or 2.5 O₂. Double everything to clear the half.'},
+ {r:['Ca(OH)2','H3PO4'],p:['Ca3(PO4)2','H2O'],c:[3,2,1,6],lv:3,lead:'Ca₃(PO₄)₂ needs 3 Ca and 2 PO₄: 3 Ca(OH)₂ and 2 H₃PO₄. That is 6 + 6 = 12 H, so 6 H₂O.'}];
+const eqStr=(e,co)=>{const side=(fs,o)=>fs.map((f,i)=>{const c=co?co[o+i]:1;return(c>1?c+' ':'')+cf(f)}).join(' + ');return side(e.r,0)+' → '+side(e.p,e.r.length)};
+function eqCount(e,co){const L={},R={};e.r.concat(e.p).forEach((f,i)=>{const a=atomsOf(f),T=i<e.r.length?L:R;for(const k in a)T[k]=(T[k]||0)+a[k]*co[i]});return[L,R]}
+const balance=lvl=>()=>{const e=pick(EQS.filter(x=>x.lv===lvl)),[L]=eqCount(e,e.c);
+  return{kind:'coef',coef:e.c,ans:0,show:e.c.join(', '),q:eqStr(e),ask:'Balance it. Type the coefficients in order, separated by commas. Include any 1s.',
+    steps:[e.lead,`Check: ${Object.keys(L).map(k=>`${L[k]} ${k}`).join(', ')} on each side`,`Balanced: ${eqStr(e,e.c)}`],tip:'Change only coefficients, never subscripts. Leave elements that appear by themselves (like O₂ or H₂) for last.'}};
+EASY.chem['Balancing equations']=balance(1);GEN.chem['Balancing equations']=balance(2);HARD.chem['Balancing equations']=balance(3);
+const spec=e=>e.r.map((f,i)=>({f,c:e.c[i],re:true})).concat(e.p.map((f,i)=>({f,c:e.c[e.r.length+i],re:false})));
+const eqLine=e=>`<b>${eqStr(e,e.c)}</b><br>`;
+EASY.chem['Stoichiometry']=()=>{const e=pick(EQS),[A,B]=shuf(spec(e)).slice(0,2),k=ri(1,5),nA=A.c*k,nB=B.c*k;
+  return{story:`${eqLine(e)}In this reaction, ${nA} mol of ${cf(A.f)} ${A.re?'reacts':'is produced'}.`,ask:`How many moles of ${cf(B.f)} ${B.re?'react':'are produced'}?`,ans:nB,
+    steps:[`The coefficients give the mole ratio ${cf(B.f)} : ${cf(A.f)} = ${B.c} : ${A.c}`,`${nA} × ${B.c}/${A.c} = ${nB} mol`],tip:'Coefficients are mole ratios. Put the substance you want on top of the ratio so the given one cancels.'}};
+GEN.chem['Stoichiometry']=()=>{const e=pick(EQS),[A,B]=shuf(spec(e)).slice(0,2),MA=MMr(A.f),MB=MMr(B.f),nA=A.c*pick([0.5,1,1.5,2,2.5,3]),mA=r2(nA*MA),nB=mA/MA*B.c/A.c,mB=r1(nB*MB);
+  return{tol:Math.max(.11,mB*.002),story:`${eqLine(e)}${f2(mA)} g of ${cf(A.f)} ${A.re?'reacts completely':'is produced'}.`,ask:`How many grams of ${cf(B.f)} ${B.re?'react':'are produced'}? Round to the tenth. (${mlist(elsOf(A.f,B.f))})`,ans:mB,
+    steps:[`Molar masses: ${cf(A.f)} = ${f2(MA)} g/mol, ${cf(B.f)} = ${f2(MB)} g/mol`,`Moles of ${cf(A.f)}: ${f2(mA)} ÷ ${f2(MA)} = ${+(mA/MA).toFixed(3)} mol`,`Mole ratio: ${+(mA/MA).toFixed(3)} × ${B.c}/${A.c} = ${+nB.toFixed(3)} mol of ${cf(B.f)}`,`${+nB.toFixed(3)} × ${f2(MB)} ≈ ${mB} g`],tip:'Grams → moles → mole ratio → moles → grams. You can’t go straight from grams of one substance to grams of another.'}};
+HARD.chem['Stoichiometry']=()=>{
+  if(coin()){const e=pick(EQS.filter(x=>x.r.length===2)),S=spec(e),[R1,R2]=S,P=pick(S.filter(s=>!s.re));let x,y;do{x=pick([1,1.5,2,2.5,3,4]);y=pick([1,1.5,2,2.5,3,4])}while(x===y);
+    const n1=R1.c*x,n2=R2.c*y,lim=x<y?R1:R2,nP=P.c*Math.min(x,y);
+    return{story:`${eqLine(e)}A mixture starts with ${n1} mol of ${cf(R1.f)} and ${n2} mol of ${cf(R2.f)}.`,ask:`How many moles of ${cf(P.f)} can form?`,ans:nP,
+      steps:[`If all the ${cf(R1.f)} reacts: ${n1} × ${P.c}/${R1.c} = ${P.c*x} mol of ${cf(P.f)}`,`If all the ${cf(R2.f)} reacts: ${n2} × ${P.c}/${R2.c} = ${P.c*y} mol of ${cf(P.f)}`,`${cf(lim.f)} makes less, so it is the limiting reactant: ${nP} mol of ${cf(P.f)}`],tip:'Work out how much product each reactant could make. The smaller amount is the answer, and that reactant is the limiting one.'}}
+  let e,A,B,MA,MB,mA,th;do{e=pick(EQS);A=pick(spec(e).filter(s=>s.re));B=pick(spec(e).filter(s=>!s.re));MA=MMr(A.f);MB=MMr(B.f);mA=r2(A.c*pick([0.5,1,1.5,2,3])*MA);th=mA/MA*B.c/A.c*MB}while(th<20);
+  const act=r1(th*ri(60,95)/100),ans=r1(act/th*100);
+  return{tol:.31,story:`${eqLine(e)}${f2(mA)} g of ${cf(A.f)} reacts completely, and the reaction actually produces ${act} g of ${cf(B.f)}.`,ask:`What is the percent yield? Round to the tenth. (${mlist(elsOf(A.f,B.f))})`,ans,
+    steps:[`Theoretical yield: ${f2(mA)} ÷ ${f2(MA)} × ${B.c}/${A.c} × ${f2(MB)} ≈ ${r2(th)} g`,'Percent yield = actual ÷ theoretical × 100',`${act} ÷ ${r2(th)} × 100 ≈ ${ans}%`],tip:'Theoretical yield is what the equation predicts; actual yield is what you really got, and it is almost always smaller.'}};
+
+/* ---------- gases ---------- */
+const degC=t=>`${N(t)} °C`;
+EASY.chem['Gas laws']=()=>{let P1,V1,P2,V2;do{P1=ri(1,6);V1=pick([2,3,4,6,8,10,12,15,20]);P2=ri(1,8);V2=P1*V1/P2}while(P2===P1||!Number.isInteger(V2*10));
+  return{tol:.01,story:`A gas takes up ${V1} L at ${P1} atm. The temperature stays the same while the pressure changes to ${P2} atm.`,ask:'What is the new volume, in liters?',ans:V2,
+    steps:['Constant temperature: Boyle’s law, P₁V₁ = P₂V₂',`${P1} × ${V1} = ${P2} × V₂`,`V₂ = ${P1*V1} ÷ ${P2} = ${V2} L`],tip:'More pressure squeezes a gas smaller. Check that the answer moves the right way.'}};
+const tPair=()=>{let a,b;do{a=pick([0,7,17,27,47,77,127]);b=pick([-73,-23,27,57,77,127,227])}while(a===b);return[a,b]};
+GEN.chem['Gas laws']=()=>{const w=W(2);
+  if(w===0){const [T1,T2]=tPair(),K1=T1+273,K2=T2+273,V1=pick([1,2,2.5,3,4,5,6]),V2=r2(V1*K2/K1);
+    return{tol:.011,story:`A balloon holds ${V1} L of gas at ${degC(T1)}. It is moved somewhere that is ${degC(T2)}, and the pressure stays the same.`,ask:'What is its new volume, in liters? Round to the hundredth.',ans:V2,
+      steps:['Constant pressure: Charles’s law, V₁/T₁ = V₂/T₂, with T in kelvin',`T₁ = ${N(T1)} + 273 = ${K1} K,  T₂ = ${N(T2)} + 273 = ${K2} K`,`V₂ = ${V1} × ${K2} ÷ ${K1} ≈ ${f2(V2)} L`],tip:'Gas laws only work in kelvin. Using °C can even give a negative volume.'}}
+  if(w===1){const [T1,T2]=tPair(),K1=T1+273,K2=T2+273,P1=pick([1,1.5,2,2.5,3]),P2=r2(P1*K2/K1);
+    return{tol:.011,story:`A sealed, rigid can holds gas at ${P1} atm and ${degC(T1)}. The can is brought to ${degC(T2)}.`,ask:'What is the new pressure, in atm? Round to the hundredth.',ans:P2,
+      steps:['Constant volume: Gay-Lussac’s law, P₁/T₁ = P₂/T₂, with T in kelvin',`T₁ = ${K1} K,  T₂ = ${K2} K`,`P₂ = ${P1} × ${K2} ÷ ${K1} ≈ ${f2(P2)} atm`],tip:'Heating a sealed container raises the pressure. That’s why aerosol cans warn you to keep them away from heat.'}}
+  const n=pick([0.25,0.5,1.5,2,2.5,3,4]),V=r2(n*22.4);
+  if(coin())return{tol:.051,story:`A tank holds ${n} mol of nitrogen gas at STP (0 °C and 1 atm).`,ask:'What volume does it take up, in liters?',ans:V,steps:['At STP, 1 mol of any gas takes up 22.4 L',`${n} × 22.4 = ${V} L`],tip:'22.4 L per mole only works at STP. Anywhere else, use PV = nRT.'};
+  return{tol:.011,story:`A sample of oxygen gas takes up ${V} L at STP (0 °C and 1 atm).`,ask:'How many moles of gas is that?',ans:n,steps:['At STP, 1 mol of any gas takes up 22.4 L',`${V} ÷ 22.4 = ${n} mol`],tip:'22.4 L per mole only works at STP.'}};
+HARD.chem['Gas laws']=()=>{const w=W(2);
+  if(w===0){const n=pick([0.5,1,1.5,2,2.5,3]),T=pick([0,25,27,37,100]),P=pick([0.5,1,1.5,2,2.5,3]),K=T+273,V=r1(n*0.0821*K/P);
+    return{tol:.11,story:`${n} mol of a gas is at ${T} °C and ${P} atm.`,ask:'What volume does it take up, in liters? Round to the tenth. (R = 0.0821 L·atm/(mol·K))',ans:V,
+      steps:['Ideal gas law: PV = nRT, so V = nRT ÷ P',`T = ${T} + 273 = ${K} K`,`V = ${n} × 0.0821 × ${K} ÷ ${P} ≈ ${V} L`],tip:'R = 0.0821 needs liters, atmospheres, moles and kelvin. Convert everything first.'}}
+  if(w===1){const P=pick([0.8,1,1.2,1.5,2]),V=pick([2,5,10,12.5,20,25]),T=pick([20,25,27,37,50]),K=T+273,n=r2(P*V/(0.0821*K));
+    return{tol:.011,story:`A ${V} L tank holds gas at ${P} atm and ${T} °C.`,ask:'How many moles of gas are in the tank? Round to the hundredth. (R = 0.0821 L·atm/(mol·K))',ans:n,
+      steps:['Ideal gas law: PV = nRT, so n = PV ÷ RT',`T = ${T} + 273 = ${K} K`,`n = ${P} × ${V} ÷ (0.0821 × ${K}) ≈ ${f2(n)} mol`],tip:'Rearrange before plugging in numbers. It keeps the arithmetic cleaner.'}}
+  const [T1,T2]=tPair(),K1=T1+273,K2=T2+273,P1=pick([1,1.5,2,3]),P2=pick([0.5,1,2.5,4]),V1=pick([2,4,5,8,10]),V2=r1(P1*V1*K2/(K1*P2));
+  return{tol:.11,story:`A gas takes up ${V1} L at ${P1} atm and ${degC(T1)}. It changes to ${P2} atm and ${degC(T2)}.`,ask:'What is the new volume, in liters? Round to the tenth.',ans:V2,
+    steps:['Combined gas law: P₁V₁/T₁ = P₂V₂/T₂, with T in kelvin',`T₁ = ${K1} K,  T₂ = ${K2} K`,`V₂ = ${P1} × ${V1} × ${K2} ÷ (${K1} × ${P2}) ≈ ${V2} L`],tip:'Cross out anything that stays constant and you get Boyle’s, Charles’s or Gay-Lussac’s law.'}};
+
+/* ---------- solutions ---------- */
+const SOLUTES=['NaCl','KCl','NaOH','C6H12O6','KNO3','CaCl2'];
+EASY.chem['Molarity and dilution']=()=>{const M=pick([0.25,0.5,1,1.5,2,3]),V=pick([0.5,1,2,4]),n=M*V;
+  if(coin())return{story:`${n} mol of sugar is dissolved in enough water to make ${V} L of solution.`,ask:'What is the molarity (M)?',ans:M,steps:['Molarity = moles of solute ÷ liters of solution',`${n} ÷ ${V} = ${M} M`],tip:'Molarity is moles per liter of solution, not per liter of water added.'};
+  return{story:`You have ${V} L of a ${M} M salt solution.`,ask:'How many moles of salt does it contain?',ans:n,steps:['Moles = molarity × liters',`${M} × ${V} = ${n} mol`],tip:'(mol/L) × L leaves mol.'}};
+GEN.chem['Molarity and dilution']=()=>{
+  if(coin()){const f=pick(SOLUTES),Mm=MMr(f),M=pick([0.1,0.2,0.25,0.5,1,2]),mL=pick([100,250,500,1000]),n=M*mL/1000,g=r2(n*Mm);
+    return{tol:.011,story:`${f2(g)} g of ${cf(f)} (molar mass ${f2(Mm)} g/mol) is dissolved to make ${mL} mL of solution.`,ask:'What is the molarity (M)?',ans:M,
+      steps:[`Moles: ${f2(g)} ÷ ${f2(Mm)} = ${+n.toFixed(4)} mol`,`Liters: ${mL} mL = ${mL/1000} L`,`M = ${+n.toFixed(4)} ÷ ${mL/1000} = ${M} M`],tip:'Two conversions: grams to moles, and milliliters to liters.'}}
+  let M1,M2,V2,V1;do{M1=pick([1,2,3,5,6,12]);M2=pick([0.1,0.25,0.5,1,1.5,2]);V2=pick([100,250,500,1000]);V1=M2*V2/M1}while(M2>=M1||!Number.isInteger(V1*10));
+  return{tol:.01,story:`You need ${V2} mL of ${M2} M hydrochloric acid, and you have a ${M1} M stock solution.`,ask:'How many mL of the stock solution should you dilute?',ans:V1,
+    steps:['Dilution: M₁V₁ = M₂V₂',`${M1} × V₁ = ${M2} × ${V2}`,`V₁ = ${M2*V2} ÷ ${M1} = ${V1} mL`],tip:'Diluting doesn’t change the moles of solute, only the volume. That’s why M₁V₁ = M₂V₂.'}};
+HARD.chem['Molarity and dilution']=()=>{
+  if(coin()){const f=pick(SOLUTES),M=pick([0.1,0.15,0.2,0.25,0.4,0.5,1.5]),mL=pick([100,200,250,500,750]),n=M*mL/1000,Mm=MMr(f),g=r2(n*Mm);
+    return{tol:.051,story:`You need to make ${mL} mL of a ${M} M ${cf(f)} solution.`,ask:`How many grams of ${cf(f)} do you need? (${mlist(elsOf(f))})`,ans:g,show:f2(g),
+      steps:[...mmSteps(f),`Moles: ${M} × ${mL/1000} L = ${+n.toFixed(4)} mol`,`Grams: ${+n.toFixed(4)} × ${f2(Mm)} = ${f2(g)} g`],tip:'Work backward: molarity × liters gives moles, and moles × molar mass gives grams.'}}
+  let M1,V1,M2,V2;do{M1=pick([1,2,3,4,6]);V1=pick([25,50,100,150,200]);M2=pick([0.25,0.5,0.75,1,1.5,2]);V2=M1*V1/M2}while(M2>=M1||!Number.isInteger(V2));
+  return{story:`${V1} mL of ${M1} M sodium hydroxide is diluted with water to ${M2} M.`,ask:'How many mL of water must be added?',ans:V2-V1,
+    steps:['M₁V₁ = M₂V₂ gives the final volume',`V₂ = ${M1} × ${V1} ÷ ${M2} = ${V2} mL`,`Water added = ${V2} − ${V1} = ${V2-V1} mL`],tip:'M₁V₁ = M₂V₂ gives the final total volume. Subtract what you started with to get the water added.'}};
+
+/* ---------- heat ---------- */
+const METALS=[['iron',0.449],['copper',0.385],['aluminum',0.897],['silver',0.235],['gold',0.129],['lead',0.128]];
+EASY.chem['Heat and temperature']=()=>{const m=pick([10,20,25,50,100,150,200,250]),dT=ri(5,40),T1=ri(15,30),q=r1(m*4.18*dT);
+  return{tol:.11,story:`${m} g of water is heated from ${T1} °C to ${T1+dT} °C.`,ask:'How much heat does it absorb, in joules? (Water: c = 4.18 J/(g·°C))',ans:q,show:fmt(q),
+    steps:['q = mcΔT',`ΔT = ${T1+dT} − ${T1} = ${dT} °C`,`q = ${m} × 4.18 × ${dT} = ${fmt(q)} J`],tip:'ΔT is always final minus initial. Heat absorbed is positive; heat released is negative.'}};
+GEN.chem['Heat and temperature']=()=>{
+  if(coin()){const m=pick([50,100,150,200,250,500]),dT=ri(4,30),T1=ri(15,25),q=r1(m*4.18*dT);
+    return{tol:.06,story:`${m} g of water at ${T1} °C absorbs ${fmt(q)} J of heat.`,ask:'What is its final temperature, in °C? (Water: c = 4.18 J/(g·°C))',ans:T1+dT,
+      steps:['q = mcΔT, so ΔT = q ÷ (mc)',`ΔT = ${fmt(q)} ÷ (${m} × 4.18) = ${dT} °C`,`Final temperature = ${T1} + ${dT} = ${T1+dT} °C`],tip:'ΔT is the change. Add it to the starting temperature to get the final one.'}}
+  const [nm,c]=pick(METALS),m=ri(20,100),dT=ri(10,50),q=r1(m*c*dT),cc=+(q/(m*dT)).toFixed(3);
+  return{tol:.0021,story:`A ${m} g piece of metal absorbs ${fmt(q)} J of heat, and its temperature rises by ${dT} °C.`,ask:'What is its specific heat, in J/(g·°C)? Round to the thousandth.',ans:cc,
+    steps:['q = mcΔT, so c = q ÷ (mΔT)',`c = ${fmt(q)} ÷ (${m} × ${dT})`,`c ≈ ${cc.toFixed(3)} J/(g·°C), which matches ${nm}`],tip:'Metals have much smaller specific heats than water, which is why they heat up so fast.'}};
+HARD.chem['Heat and temperature']=()=>{
+  if(coin()){const m=pick([10,20,25,50,100]),T=pick([10,20,25,30,40,50]),q1=m*334,q2=m*4.18*T,kJ=r2((q1+q2)/1000);
+    return{tol:.011,story:`${m} g of ice at 0 °C melts and then warms to ${T} °C.`,ask:'How much heat does this take in total, in kJ? Round to the hundredth. (Melting ice: 334 J/g. Water: c = 4.18 J/(g·°C))',ans:kJ,show:f2(kJ),
+      steps:[`Melting: q = m × 334 = ${m} × 334 = ${fmt(q1)} J`,`Warming: q = mcΔT = ${m} × 4.18 × ${T} = ${fmt(r1(q2))} J`,`Total: ${fmt(r1(q1+q2))} J = ${f2(kJ)} kJ`],tip:'The temperature doesn’t change while ice melts, so melting needs its own step with no ΔT.'}}
+  const [nm,c]=pick(METALS),m1=pick([50,100,150,200]),T1=pick([80,90,95,100]),m2=pick([100,150,200,250]),T2=pick([18,20,22,25]),Tf=r1((m1*c*T1+m2*4.18*T2)/(m1*c+m2*4.18));
+  return{tol:.11,story:`A ${m1} g piece of ${nm} (c = ${c} J/(g·°C)) at ${T1} °C is dropped into ${m2} g of water at ${T2} °C.`,ask:'What is the final temperature, in °C? Round to the tenth. (Water: c = 4.18 J/(g·°C))',ans:Tf,
+    steps:['Heat lost by the metal = heat gained by the water',`${m1} × ${c} × (${T1} − T) = ${m2} × 4.18 × (T − ${T2})`,`T = (${m1} × ${c} × ${T1} + ${m2} × 4.18 × ${T2}) ÷ (${m1} × ${c} + ${m2} × 4.18)`,`T ≈ ${Tf} °C`],tip:'The final temperature must land between the two starting temperatures, and closer to the water’s, since water holds so much heat.'}};
+
+/* ---------- acids and bases ---------- */
+const acidity=p=>p<7?'acidic':p>7?'basic':'neutral';
+EASY.chem['pH and acids']=()=>{
+  if(coin()){const n=ri(1,13);return{story:`A solution has [H⁺] = 1 × 10${supN(-n)} M.`,ask:'What is its pH?',ans:n,steps:['pH = −log[H⁺]',`pH = −log(10${supN(-n)}) = ${n}, so it is ${acidity(n)}`],tip:'When [H⁺] is 1 × 10 to a power, the pH is that power without the minus sign.'}}
+  const p=ri(1,13);return{story:`A solution has a pH of ${p}.`,ask:'What is its pOH?',ans:14-p,steps:['pH + pOH = 14',`pOH = 14 − ${p} = ${14-p}`],tip:'pH and pOH always add to 14 (in water at 25 °C).'}};
+GEN.chem['pH and acids']=()=>{
+  if(coin()){const n=ri(1,13);return{story:`A cleaning solution has [OH⁻] = 1 × 10${supN(-n)} M.`,ask:'What is its pH?',ans:14-n,steps:[`pOH = −log[OH⁻] = ${n}`,`pH = 14 − ${n} = ${14-n}, so it is ${acidity(14-n)}`],tip:'From [OH⁻] you get pOH first. Subtract from 14 to get pH.'}}
+  const p=ri(2,12),x=10**-p;return{tol:x*1e-3,story:`A solution has a pH of ${p}.`,ask:'What is [H⁺], in M? (Type something like 1×10^-5.)',ans:x,show:`1 × 10${supN(-p)}`,steps:['[H⁺] = 10^(−pH)',`[H⁺] = 1 × 10${supN(-p)} M`],tip:'Going from pH back to [H⁺] undoes the log: 10 to the negative pH.'}};
+HARD.chem['pH and acids']=()=>{const a=pick([1.5,2,2.5,3.2,4,5,6.3,7.5,8.1]),n=ri(2,6),x=a*10**-n,w=W(2),sx=`${a} × 10${supN(-n)}`;
+  if(w===0){const p=r2(-Math.log10(x));return{tol:.011,story:`A solution has [H⁺] = ${sx} M.`,ask:'What is its pH? Round to the hundredth.',ans:p,show:f2(p),steps:['pH = −log[H⁺]',`pH = −log(${sx}) ≈ ${f2(p)}, so it is ${acidity(p)}`],tip:'A quick check: [H⁺] between 10⁻⁴ and 10⁻³ means pH between 3 and 4.'}}
+  if(w===1){const po=-Math.log10(x),p=r2(14-po);return{tol:.011,story:`A solution has [OH⁻] = ${sx} M.`,ask:'What is its pH? Round to the hundredth.',ans:p,show:f2(p),steps:[`pOH = −log(${sx}) ≈ ${po.toFixed(2)}`,`pH = 14 − ${po.toFixed(2)} ≈ ${f2(p)}, so it is ${acidity(p)}`],tip:'Find pOH first, then subtract from 14.'}}
+  const p=pick([2.4,3.3,4.7,5.2,8.6,9.1,10.5,11.8]),h=10**-p;
+  return{tol:h*.01,story:`A solution has a pH of ${p}.`,ask:'What is [H⁺], in M? Give 3 significant figures, like 3.98×10^-4.',ans:h,show:sci(h),steps:['[H⁺] = 10^(−pH)',`[H⁺] = 10^(−${p}) ≈ ${sci(h)} M`],tip:'Use the 10ˣ key on a calculator with the negative pH.'}};
+
 /* ================= word problems ================= */
 const who=()=>pick(['Maya','Jordan','Priya','Leo','Sofia','Marcus','Aiden','Chloe','Omar','Emma','Nia','Diego']);
 function figFerris(D,c){const s=150/(c+D/2),Rr=D/2*s,cy=175-c*s,cx=150;let b=phys.ground(20,300,175)+fig.ln(cx-30,175,cx,cy,'s thin')+fig.ln(cx+30,175,cx,cy,'s thin')+fig.ci(cx,cy,Rr,'s');
@@ -1604,7 +1872,34 @@ phys:[
 ['Wavelength','Distance between matching points on a wave (λ).',''],
 ['Current / Voltage / Resistance','Flow of charge (A) / push (V) / opposition (Ω).','V = IR'],
 ['Series / Parallel circuit','One path / multiple branches.',''],
-['SI units','Meter, kilogram, second, ampere, kelvin, mole, candela.','']]
+['SI units','Meter, kilogram, second, ampere, kelvin, mole, candela.','']],
+chem:[
+['Atom','The smallest unit of an element that keeps its properties.','A single carbon atom'],
+['Element / Compound','One kind of atom / two or more elements chemically bonded.','O₂ is an element; H₂O is a compound'],
+['Molecule','Two or more atoms bonded together as a unit.','CO₂'],
+['Ion (cation / anion)','A charged atom: a cation is positive (lost electrons), an anion is negative (gained electrons).','Na⁺, Cl⁻'],
+['Atomic number','The number of protons. It identifies the element.','Carbon is 6'],
+['Mass number','Protons + neutrons in one atom.','Carbon-14 has 6 protons and 8 neutrons'],
+['Isotopes','Atoms of the same element with different numbers of neutrons.','Carbon-12 and carbon-14'],
+['Valence electrons','Electrons in the outermost shell. They take part in bonding.','Oxygen has 6'],
+['Ionic / Covalent bond','Electrons transferred between a metal and a nonmetal / electrons shared between nonmetals.','NaCl / H₂O'],
+['Mole','6.02 × 10²³ particles (Avogadro’s number).','1 mol of water is 6.02 × 10²³ molecules'],
+['Molar mass','The mass of one mole of a substance, in g/mol.','H₂O is 18.02 g/mol'],
+['Empirical / Molecular formula','Simplest whole-number ratio of atoms / the actual number of each atom.','CH₂O / C₆H₁₂O₆'],
+['Reactants / Products','What goes into a reaction / what comes out.','In 2H₂ + O₂ → 2H₂O, water is the product'],
+['Coefficient / Subscript','Number in front of a formula (how many units) / small number in a formula (atoms in one unit).','2H₂O: coefficient 2, subscript 2'],
+['Law of conservation of mass','Atoms are not created or destroyed in a reaction, so equations must balance.',''],
+['Limiting reactant','The reactant that runs out first and sets how much product can form.',''],
+['Percent yield','Actual yield ÷ theoretical yield × 100.',''],
+['Solute / Solvent','What is dissolved / what does the dissolving.','Salt in water'],
+['Molarity (M)','Moles of solute per liter of solution.','1 M NaCl'],
+['Acid / Base','Gives H⁺ in water (pH below 7) / gives OH⁻ or accepts H⁺ (pH above 7).','HCl / NaOH'],
+['pH','−log[H⁺]. Each unit is a tenfold change in acidity.','pH 3 is 10 times more acidic than pH 4'],
+['Exothermic / Endothermic','Releases heat (surroundings warm up) / absorbs heat (surroundings cool down).','Burning / an ice pack'],
+['Specific heat','Heat needed to raise 1 g of a substance by 1 °C.','Water: 4.18 J/(g·°C)'],
+['STP','Standard temperature and pressure: 0 °C (273 K) and 1 atm.','1 mol of gas takes up 22.4 L'],
+['Significant figures','The digits in a measurement that are known reliably, plus one estimated digit.','0.00450 has 3'],
+['Catalyst','Speeds up a reaction without being used up.','Enzymes']]
 };
 
 /* ================= formulas ================= */
@@ -1636,7 +1931,16 @@ phys:[['Kinematics',[['Velocity','v = Δx / Δt'],['Acceleration','a = (v − v�
  ['Energy and momentum',[['Work','W = Fd cos θ'],['Kinetic energy','KE = ½mv²'],['Potential energy','PE = mgh'],['Power','P = W / t'],['Energy conservation','mgh = ½mv²  →  v = √(2gh)'],['Momentum','p = mv'],['Collision','m₁v₁ + m₂v₂ = m₁v₁′ + m₂v₂′'],['Impulse','J = FΔt = Δp']]],
  ['Waves',[['Wave speed','v = fλ'],['Period','T = 1 / f'],['Speed of light','c = 3.00 × 10⁸ m/s'],['Speed of sound (air)','≈ 343 m/s']]],
  ['Electricity',[['Ohm’s law','V = IR'],['Power','P = IV = I²R'],['Series','R = R₁ + R₂ + …'],['Parallel','1/R = 1/R₁ + 1/R₂ + …']]],
- ['Units',[['Newton','1 N = 1 kg·m/s²'],['Joule','1 J = 1 N·m'],['Watt','1 W = 1 J/s'],['Density','ρ = m / V']]]]
+ ['Units',[['Newton','1 N = 1 kg·m/s²'],['Joule','1 J = 1 N·m'],['Watt','1 W = 1 J/s'],['Density','ρ = m / V']]]],
+chem:[['Significant figures',[['Nonzero digits','always count'],['Zeros between digits','always count'],['Leading zeros','never count (0.0045 has 2)'],['Trailing zeros','count only with a decimal point'],['× and ÷','keep the fewest significant figures'],['+ and −','keep the fewest decimal places']]],
+ ['Atomic structure',[['Protons','= atomic number (Z)'],['Neutrons','= mass number − atomic number'],['Electrons in an ion','= Z − charge'],['Average atomic mass','= Σ (isotope mass × fraction)']]],
+ ['Moles and molar mass',[['Molar mass','add up (count × atomic mass)'],['Moles from grams','n = m / M'],['Grams from moles','m = n × M'],['Particles','= moles × 6.02 × 10²³'],['Percent composition','= (element mass / molar mass) × 100']]],
+ ['Empirical formulas',[['From percents','assume 100 g → grams → moles → divide by the smallest'],['Molecular formula','multiply by (molar mass ÷ empirical formula mass)']]],
+ ['Stoichiometry',[['Balancing equations','change coefficients, never subscripts'],['Mole ratio','from the coefficients'],['Grams to grams','g → mol → mole ratio → mol → g'],['Limiting reactant','the one that makes the least product'],['Percent yield','= actual / theoretical × 100']]],
+ ['Gas laws',[['Kelvin','K = °C + 273'],['Boyle','P₁V₁ = P₂V₂'],['Charles','V₁/T₁ = V₂/T₂'],['Gay-Lussac','P₁/T₁ = P₂/T₂'],['Combined','P₁V₁/T₁ = P₂V₂/T₂'],['Ideal gas','PV = nRT,  R = 0.0821 L·atm/(mol·K)'],['At STP','1 mol of gas = 22.4 L']]],
+ ['Solutions',[['Molarity','M = mol solute / L solution'],['Dilution','M₁V₁ = M₂V₂']]],
+ ['Heat',[['Heat and temperature','q = mcΔT'],['Change in temperature','ΔT = final − initial'],['Water','c = 4.18 J/(g·°C)'],['Melting ice','334 J/g'],['Calorimetry','heat lost = heat gained']]],
+ ['Acids and bases',[['pH','pH = −log[H⁺]'],['pOH','pOH = −log[OH⁻]'],['pH + pOH','= 14'],['From pH','[H⁺] = 10^(−pH)'],['Scale','below 7 acidic, 7 neutral, above 7 basic']]]]
 };
 
 /* ---------- Elementary terms and fact sheet ---------- */
@@ -1698,11 +2002,14 @@ function evalExpr(src,xv){
     if(c==='x'&&xv!==undefined){i++;return Cx(xv)}
     throw 0}
   const v=expr();if(i!==s.length)throw 0;return v}
-const normalize=raw=>raw.toLowerCase().replace(/,/g,'').replace(/[−–—]/g,'-').replace(/\s+/g,'').replace(/[×·]/g,'*').replace(/÷/g,'/')
-  .replace(/²/g,'^2').replace(/³/g,'^3').replace(/π/g,'pi').replace(/√/g,'sqrt').replace(/[%°$]/g,'');
+// Superscript runs become powers: 10⁻⁵ → 10^-5, 10²³ → 10^23.
+const SUPS={'⁻':'-','⁰':'0','¹':'1','²':'2','³':'3','⁴':'4','⁵':'5','⁶':'6','⁷':'7','⁸':'8','⁹':'9'};
+const normalize=raw=>raw.replace(/[⁻⁰¹²³⁴⁵⁶⁷⁸⁹]+/g,m=>'^'+[...m].map(c=>SUPS[c]).join('')).toLowerCase().replace(/,/g,'').replace(/[−–—]/g,'-').replace(/\s+/g,'').replace(/[×·]/g,'*').replace(/÷/g,'/').replace(/π/g,'pi').replace(/√/g,'sqrt').replace(/[%°$]/g,'');
 const tryEval=(s,xv)=>{try{return evalExpr(s,xv)}catch(e){return null}};
 function readNumber(raw){
   let s=normalize(raw).replace(/^[a-zθ₀-₉'_]+(>=|<=|=|>|<|≥|≤)/,'');
+  // Scientific notation: 6.02x10^23 and 6.02e23 both mean 6.02 × 10^23.
+  s=s.replace(/(\d)x10\^/g,'$1*10^').replace(/^(-?[\d.]+)e([+-]?\d+)/,'$1*10^($2)');
   let v=tryEval(s);
   if(!v){const t=s.replace(/([0-9.)])([a-zω][a-zω\/^0-9*.]*)$/,'$1');if(t!==s)v=tryEval(t)}
   return v&&Math.abs(v.im)<1e-9?v.re:NaN}
@@ -1711,6 +2018,8 @@ const parseAns=raw=>readNumber(String(raw));
 function grade(p,raw){
   if(!raw||!raw.trim())return'empty';
   if(p.kind==='mc')return +raw===p.correct?'ok':'wrong';
+  if(p.kind==='coef'){const a=(raw.match(/\d+/g)||[]).map(Number);return a.length===p.coef.length&&a.every((x,i)=>x===p.coef[i])?'ok':'wrong'}
+  if(p.kind==='formula')return p.ansList.includes(fmlKey(raw))?'ok':'wrong';
   if(p.kind==='text'){const u=normAns(raw);if(p.ansList.some(a=>normAns(a)===u))return'ok';
     const v=readNumber(raw);return !isNaN(v)&&p.ansList.some(a=>{const w=readNumber(a);return !isNaN(w)&&Math.abs(v-w)<=1e-6*Math.max(1,Math.abs(w))})?'ok':'wrong'}
   if(p.kind==='time'){const m=normalize(raw).replace(/(a\.?m\.?|p\.?m\.?)$/,'').match(/^(\d{1,2}):(\d{2})$/);if(!m||+m[2]>59||+m[1]>12||+m[1]<1)return'badtime';return((+m[1]%12)*60+ +m[2])%720===p.ansT%720?'ok':'wrong'}
@@ -1728,6 +2037,12 @@ const normAns=s=>String(s).normalize('NFKC').toLowerCase().replace(/[‘’]/g,"
 // rounding, off by one, and finally "very close".
 function mistakeHint(p,raw){try{
   if(p.kind==='mc'||p.kind==='poly')return '';
+  if(p.kind==='coef'){const a=(raw.match(/\d+/g)||[]).map(Number),c=p.coef;
+    if(a.length!==c.length)return `Type one coefficient for each of the ${c.length} formulas, in order, including any 1s.`;
+    const k=a[0]/c[0];if(k>1&&Number.isInteger(k)&&a.every((x,i)=>x===c[i]*k))return 'That balances, but the coefficients can be divided by '+k+'. Use the smallest whole numbers.';return ''}
+  if(p.kind==='formula'){const w=atomsOf(fmlCase(raw)),r=atomsOf(p.fml);if(!w)return 'Write it like CH2O: element symbols with capital letters, each followed by its count.';
+    const ks=Object.keys(r);if(ks.length===Object.keys(w).length&&ks.every(e=>w[e])){const k=w[ks[0]]/r[ks[0]];if(k!==1&&ks.every(e=>Math.abs(w[e]/r[e]-k)<1e-9))return k>1?'Right elements and ratio, but not in lowest terms. Divide every subscript by the same number.':'Right ratio, but the question wants a bigger multiple. Use the molar mass.'}
+    return ''}
   if(p.kind==='cx'){const v=tryEval(normalize(raw)),[a,b]=p.ansC;if(!v)return '';const eq=(x,y)=>Math.abs(x-y)<1e-6;
     if(b&&eq(v.re,a)&&eq(v.im,-b))return 'The real part is right. Check the sign of the i term.';
     if(a&&eq(v.re,-a)&&eq(v.im,b))return 'The i term is right. Check the sign of the real part.';
@@ -1753,7 +2068,7 @@ function mistakeHint(p,raw){try{
   return ''}catch(e){return ''}}
 // What the student answered, as text (multiple choice stores the choice number).
 const rawText=(p,raw)=>p.kind==='mc'?(p.choices[+raw]!==undefined?esc(p.choices[+raw]):''):esc(raw);
-const placeholder=p=>p.kind==='poly'?'(x + 2)(x − 5)':p.kind==='cx'?'like 3 − 4i':p.kind==='time'?'like 3:45':p.kind==='rem'?'like 17 R 2':'Your answer';
+const placeholder=p=>p.kind==='coef'?'Coefficients, in order':p.kind==='formula'?'like CH2O':p.kind==='poly'?'(x + 2)(x − 5)':p.kind==='cx'?'like 3 − 4i':p.kind==='time'?'like 3:45':p.kind==='rem'?'like 17 R 2':'Your answer';
 const BADMSG={bad:'I couldn’t read that. Enter a number, a fraction like 3/4, a root like sqrt2/2, or a π expression like 3pi/4.',
   badtime:'Type the time like 3:45.',badrem:'Type the quotient, then R, then the remainder, like 17 R 2.',notfactored:'That is equal to the original, but it isn’t factored yet. Write it as a product like (x + 2)(x − 5).',empty:'Type an answer first.'};
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -1928,7 +2243,7 @@ function makeProblem(sj,name,lvl=LEVEL){if(isCustom(sj))lvl=2;const prev=LEVEL;L
   p.steps=p.steps.filter(Boolean);for(const k of ['story','q','ask'])if(typeof p[k]==='string')p[k]=fixArticles(p[k]);return p}
 function fixArticles(t){return t.replace(/\b([Aa]) (\$?)(\d[\d,]*)/g,(m,a,d,n)=>{const w=n.replace(/,/g,''),L=w.length;const an=w[0]==='8'||(L%3===2&&/^1[18]/.test(w));return an?`${a}n ${d}${n}`:m})}
 const KEYS=[['√','√'],['π','π'],['²','²'],['^','^'],['/','/'],['−','-'],['(','('],[')',')']];
-function keysHTML(p,id){if(p.kind==='mc'||(p.kind==='text'&&!p.numeric))return '';const k=[...KEYS];if(p.kind==='poly')k.unshift(['x','x']);if(p.kind==='cx')k.unshift(['i','i']);if(p.kind==='time')k.unshift([':',':']);if(p.kind==='rem')k.unshift(['R',' R ']);
+function keysHTML(p,id){if(p.kind==='mc'||p.kind==='coef'||p.kind==='formula'||(p.kind==='text'&&!p.numeric))return '';let k=[...KEYS];if(p.subj==='chem'){k=k.filter(x=>x[0]!=='π');const a=Math.abs(p.ans);if(a&&(a>=1e5||a<1e-3))k.unshift(['×10^','×10^'])}if(p.kind==='poly')k.unshift(['x','x']);if(p.kind==='cx')k.unshift(['i','i']);if(p.kind==='time')k.unshift([':',':']);if(p.kind==='rem')k.unshift(['R',' R ']);
   return `<div class="keys" role="group" aria-label="Math symbols">${k.map(([l,v])=>`<button type="button" tabindex="-1" data-for="${id}" data-ins="${v}" aria-label="Insert ${l}">${l}</button>`).join('')}</div>`}
 document.addEventListener('pointerdown',e=>{if(e.target.closest&&e.target.closest('.keys button'))e.preventDefault()});
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('.keys button');if(!b)return;const inp=$(b.dataset.for);if(!inp)return;
@@ -2832,7 +3147,8 @@ const WDESC={elem:['Grades 1–5','Place value, the four operations, fractions, 
   geo:['High school','Angles, area, volume, the Pythagorean theorem and circles'],
   alg2:['High school','Quadratics, complex numbers, exponentials, logs and sequences'],
   pre:['High school','Trig, the unit circle, radians, asymptotes and limits'],
-  phys:['High school','Motion, forces, energy, momentum, circuits and waves']};
+  phys:['High school','Motion, forces, energy, momentum, circuits and waves'],
+  chem:['High school','Moles, balancing equations, stoichiometry, gas laws, solutions and pH']};
 function openWelcome(){const w=$('welcome');
   $('wopts').innerHTML=SUBJ.map(s=>{const d=WDESC[s.id]||['',''];return `<button class="wopt" type="button" data-subj="${s.id}"><b>${s.name}</b>${d[0]?`<em>${d[0]}</em>`:''}${d[1]?`<span>${d[1]}</span>`:''}</button>`}).join('');
   $('wopts').querySelectorAll('[data-subj]').forEach(b=>b.onclick=()=>closeWelcome(b.dataset.subj));
