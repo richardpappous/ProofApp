@@ -85,7 +85,7 @@ export const BRIDGE = `(function(){
     }).observe(card, { childList: true, subtree: true });
 
     // Track the menu and pop-up panels so the phone's back button closes them instead of leaving the app.
-    var panels = ['whomenu', 'fbsheet', 'cmgr', 'frsheet'].map(function (id) { return document.getElementById(id); }).filter(Boolean);
+    var panels = ['whomenu', 'fbsheet', 'cmgr', 'frsheet', 'ptsheet'].map(function (id) { return document.getElementById(id); }).filter(Boolean);
     var sendOpen = function () {
       post({ type: 'menu', open: panels.some(function (el) { return !el.hidden; }) });
     };

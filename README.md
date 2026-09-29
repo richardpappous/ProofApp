@@ -13,10 +13,11 @@ A math and science practice and study site, from Elementary math through Pre-Cal
 - **Terms and formulas** for each subject, with flip-card flashcards, a study mode and a flashcard test
 - **Your own subjects:** open-ended and multiple-choice questions, flashcards and pictures, shareable with a short code
 - **Multiple students** on one device, with backup and restore
-- Works on phones (it can be added to the home screen like an app) and has a dark mode
+- **Periodic table** for Chemistry, with search and the current problem's elements highlighted
+- Works on phones (it can be added to the home screen like an app), works **offline** after the first visit, and has a dark mode
 
 ## How it works
-The whole site is a single `index.html` file with no server and no sign-in. Progress is saved in your browser on your device.
+The whole site is a single `index.html` file with no server and no sign-in. Progress is saved in your browser on your device. A small service worker (`sw.js`) keeps a copy for offline use.
 
 ## About this project
 I designed the features and tested the site with real users, finding and fixing bugs along the way. I built it with an AI coding assistant (Claude).

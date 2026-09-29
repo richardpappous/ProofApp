@@ -316,6 +316,35 @@ details.fold[open]{padding-bottom:20px}
 .xbtn{border:0;background:none;color:var(--muted);font-size:22px;line-height:1;padding:6px 8px;border-radius:8px;cursor:pointer}
 .fbctx{font:13px/1.45 var(--mono);color:var(--muted);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
 @media (min-width:600px){.sheet{align-items:center}}
+/* periodic table (Chemistry): only the table scrolls sideways on a phone, never the page */
+#ptbody{max-width:780px}
+.ptwrap{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;padding-bottom:6px;margin:0 -4px;flex-shrink:0}
+.sheetcard>*{flex-shrink:0}
+.ptgrid{display:grid;grid-template-columns:repeat(18,38px);gap:3px;width:max-content;padding:0 4px}
+.pte{border:0;border-radius:6px;min-height:42px;padding:2px 0;font:700 14px/1.05 var(--body);color:#16213a;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.pte small{font-size:9px;font-weight:400;opacity:.85}
+.pte[aria-pressed="true"]{outline:3px solid var(--accent);outline-offset:1px;position:relative;z-index:1}
+.pte.hit{box-shadow:inset 0 0 0 2px #16213a}
+.pte:focus-visible{outline:3px solid var(--accent);outline-offset:1px}
+.ptph{font-size:9px;color:var(--muted);display:flex;align-items:center;justify-content:center;text-align:center;border:1px dashed var(--line);border-radius:6px}
+.ptgap{grid-column:1/-1;height:8px}
+.ptinfo{display:flex;gap:14px;align-items:center;min-height:62px;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.ptsym{font:800 26px var(--display);min-width:56px;height:52px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#16213a}
+.ptlegend{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12px;color:var(--muted)}
+.ptlegend span{display:inline-flex;align-items:center;gap:5px}
+.ptlegend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.c-alk{background:#ffc9c2}.c-ae{background:#ffdcb0}.c-tm{background:#fbe7a4}.c-pt{background:#cfe8b8}.c-md{background:#bfe3d9}
+.c-nm{background:#c6dcff}.c-hal{background:#d8d0ff}.c-ng{background:#f0cdea}.c-ln{background:#e4dccd}.c-an{background:#eccfc5}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .pte,:root:not([data-theme="light"]) .ptsym{color:#e6ebf4}
+  :root:not([data-theme="light"]) .pte.hit{box-shadow:inset 0 0 0 2px #e6ebf4}
+  :root:not([data-theme="light"]) .c-alk{background:#6a2f2b}:root:not([data-theme="light"]) .c-ae{background:#6a4620}:root:not([data-theme="light"]) .c-tm{background:#5c5218}
+  :root:not([data-theme="light"]) .c-pt{background:#2f5226}:root:not([data-theme="light"]) .c-md{background:#1d5249}:root:not([data-theme="light"]) .c-nm{background:#22406b}
+  :root:not([data-theme="light"]) .c-hal{background:#403375}:root:not([data-theme="light"]) .c-ng{background:#5f2a58}:root:not([data-theme="light"]) .c-ln{background:#4a4336}:root:not([data-theme="light"]) .c-an{background:#57362c}}
+:root[data-theme="dark"] .pte,:root[data-theme="dark"] .ptsym{color:#e6ebf4}
+:root[data-theme="dark"] .pte.hit{box-shadow:inset 0 0 0 2px #e6ebf4}
+:root[data-theme="dark"] .c-alk{background:#6a2f2b}:root[data-theme="dark"] .c-ae{background:#6a4620}:root[data-theme="dark"] .c-tm{background:#5c5218}
+:root[data-theme="dark"] .c-pt{background:#2f5226}:root[data-theme="dark"] .c-md{background:#1d5249}:root[data-theme="dark"] .c-nm{background:#22406b}
+:root[data-theme="dark"] .c-hal{background:#403375}:root[data-theme="dark"] .c-ng{background:#5f2a58}:root[data-theme="dark"] .c-ln{background:#4a4336}:root[data-theme="dark"] .c-an{background:#57362c}
 .field{display:flex;flex-direction:column;gap:6px;font-weight:700;font-size:14px}
 .field input[type=text]{font:16px var(--body);padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);max-width:420px}
 .prog{height:6px;background:var(--accent-soft);border-radius:99px;overflow:hidden}
@@ -418,6 +447,7 @@ details.fold[open]{padding-bottom:20px}
   </form>
 </div>
 <div class="sheet" id="frsheet" role="dialog" aria-modal="true" aria-labelledby="frtitle" hidden><div class="card sheetcard" id="frbody"></div></div>
+<div class="sheet" id="ptsheet" role="dialog" aria-modal="true" aria-labelledby="pttitle" hidden><div class="card sheetcard" id="ptbody"></div></div>
 <div class="panel" id="cmgr" role="dialog" aria-modal="true" aria-labelledby="cmtitle" hidden><div class="pwrap" id="cmbody"></div></div>
 <div class="welcome" id="welcome" role="dialog" aria-modal="true" aria-labelledby="wtitle" hidden>
   <div class="wcard">
@@ -2662,7 +2692,7 @@ function render(){
    ${keysHTML(c,'ain')}
    <div id="fb"></div>
    <div id="hints"></div>
-   <div class="actions"><button class="btn ghost" id="bhint" type="button">Hint</button><button class="btn ghost" id="bsteps" type="button">Show answer and steps</button><button class="btn ghost" id="bnext" type="button">New problem</button>${FORM[subj].length?'<button class="btn ghost" id="bform" type="button">Formulas</button>':''}</div>
+   <div class="actions"><button class="btn ghost" id="bhint" type="button">Hint</button><button class="btn ghost" id="bsteps" type="button">Show answer and steps</button><button class="btn ghost" id="bnext" type="button">New problem</button>${FORM[subj].length?'<button class="btn ghost" id="bform" type="button">Formulas</button>':''}${subj==='chem'?'<button class="btn ghost" type="button" data-pt="open">Periodic table</button>':''}</div>
    <div id="more"></div>`;
   const H=c.steps.length>1?c.steps.slice(0,-1):c.tip?[c.tip]:[];
   if(!H.length)$('bhint').hidden=true;
@@ -2723,6 +2753,47 @@ function openFormulaSheet(topicName){const groups=FORM[subj];if(!groups.length)r
 function closeFormulaSheet(){$('frsheet').hidden=true;document.body.style.overflow='';const b=$('bform');if(b)b.focus({preventScroll:true})}
 $('frsheet').addEventListener('click',e=>{if(e.target.id==='frsheet'||e.target.closest('[data-fr="close"]'))closeFormulaSheet()});
 $('frsheet').addEventListener('keydown',e=>{if(e.key==='Escape')closeFormulaSheet()});
+/* ---------- periodic table (Chemistry: button on the practice card and on the Formulas page) ---------- */
+// "Symbol Name Mass" by atomic number. Masses match the AM table the Chemistry problems use (rounded to the
+// hundredth); [n] is the mass number of the most stable isotope for elements with no stable ones.
+const PTDATA='H Hydrogen 1.01;He Helium 4.00;Li Lithium 6.94;Be Beryllium 9.01;B Boron 10.81;C Carbon 12.01;N Nitrogen 14.01;O Oxygen 16.00;F Fluorine 19.00;Ne Neon 20.18;Na Sodium 22.99;Mg Magnesium 24.31;Al Aluminum 26.98;Si Silicon 28.09;P Phosphorus 30.97;S Sulfur 32.07;Cl Chlorine 35.45;Ar Argon 39.95;K Potassium 39.10;Ca Calcium 40.08;Sc Scandium 44.96;Ti Titanium 47.87;V Vanadium 50.94;Cr Chromium 52.00;Mn Manganese 54.94;Fe Iron 55.85;Co Cobalt 58.93;Ni Nickel 58.69;Cu Copper 63.55;Zn Zinc 65.38;Ga Gallium 69.72;Ge Germanium 72.63;As Arsenic 74.92;Se Selenium 78.97;Br Bromine 79.90;Kr Krypton 83.80;Rb Rubidium 85.47;Sr Strontium 87.62;Y Yttrium 88.91;Zr Zirconium 91.22;Nb Niobium 92.91;Mo Molybdenum 95.95;Tc Technetium [98];Ru Ruthenium 101.07;Rh Rhodium 102.91;Pd Palladium 106.42;Ag Silver 107.87;Cd Cadmium 112.41;In Indium 114.82;Sn Tin 118.71;Sb Antimony 121.76;Te Tellurium 127.60;I Iodine 126.90;Xe Xenon 131.29;Cs Cesium 132.91;Ba Barium 137.33;La Lanthanum 138.91;Ce Cerium 140.12;Pr Praseodymium 140.91;Nd Neodymium 144.24;Pm Promethium [145];Sm Samarium 150.36;Eu Europium 151.96;Gd Gadolinium 157.25;Tb Terbium 158.93;Dy Dysprosium 162.50;Ho Holmium 164.93;Er Erbium 167.26;Tm Thulium 168.93;Yb Ytterbium 173.05;Lu Lutetium 174.97;Hf Hafnium 178.49;Ta Tantalum 180.95;W Tungsten 183.84;Re Rhenium 186.21;Os Osmium 190.23;Ir Iridium 192.22;Pt Platinum 195.08;Au Gold 196.97;Hg Mercury 200.59;Tl Thallium 204.38;Pb Lead 207.20;Bi Bismuth 208.98;Po Polonium [209];At Astatine [210];Rn Radon [222];Fr Francium [223];Ra Radium [226];Ac Actinium [227];Th Thorium 232.04;Pa Protactinium 231.04;U Uranium 238.03;Np Neptunium [237];Pu Plutonium [244];Am Americium [243];Cm Curium [247];Bk Berkelium [247];Cf Californium [251];Es Einsteinium [252];Fm Fermium [257];Md Mendelevium [258];No Nobelium [259];Lr Lawrencium [266];Rf Rutherfordium [267];Db Dubnium [268];Sg Seaborgium [269];Bh Bohrium [270];Hs Hassium [269];Mt Meitnerium [278];Ds Darmstadtium [281];Rg Roentgenium [282];Cn Copernicium [285];Nh Nihonium [286];Fl Flerovium [289];Mc Moscovium [290];Lv Livermorium [293];Ts Tennessine [294];Og Oganesson [294]';
+const PT_CAT={alk:'Alkali metal',ae:'Alkaline earth metal',tm:'Transition metal',pt:'Post-transition metal',md:'Metalloid',nm:'Nonmetal',hal:'Halogen',ng:'Noble gas',ln:'Lanthanide',an:'Actinide'};
+const ptCat=z=>[3,11,19,37,55,87].includes(z)?'alk':[4,12,20,38,56,88].includes(z)?'ae':[5,14,32,33,51,52].includes(z)?'md':[1,6,7,8,15,16,34].includes(z)?'nm'
+  :[9,17,35,53,85,117].includes(z)?'hal':[2,10,18,36,54,86,118].includes(z)?'ng':z>=57&&z<=71?'ln':z>=89&&z<=103?'an'
+  :(z>=21&&z<=30)||(z>=39&&z<=48)||(z>=72&&z<=80)||(z>=104&&z<=112)?'tm':'pt';
+let PT=null;const ptData=()=>PT||(PT=PTDATA.split(';').map((s,i)=>{const [sym,name,mass]=s.split(' ');return{z:i+1,sym,name,mass,cat:ptCat(i+1)}}));
+// [row, column] in the standard layout. Row 8 is a gap; rows 9 and 10 hold the lanthanides and actinides.
+function ptPos(z){if(z===1)return[1,1];if(z===2)return[1,18];if(z<=10)return[2,z<=4?z-2:z+8];if(z<=18)return[3,z<=12?z-10:z];
+  if(z<=36)return[4,z-18];if(z<=54)return[5,z-36];if(z<=56)return[6,z-54];if(z<=71)return[9,z-54];if(z<=86)return[6,z-68];
+  if(z<=88)return[7,z-86];if(z<=103)return[10,z-86];return[7,z-100]}
+function ptInfo(e,miss){if(!e)return `<div class="ptinfo"><span class="note" style="margin:0">${miss?`No element matches “${esc(miss)}”.`:'Tap an element to see its details.'}</span></div>`;
+  const radio=e.mass.startsWith('[');
+  return `<div class="ptinfo"><div class="ptsym c-${e.cat}">${e.sym}</div><div><b>${e.name}</b><div class="count">Atomic number ${e.z} · Atomic mass ${radio?`${e.mass}, the mass number of its most stable isotope`:e.mass+' g/mol'}</div><div class="count">${PT_CAT[e.cat]}</div></div></div>`}
+function ptSelect(z,scroll){const P=ptData();$('ptbody').querySelectorAll('.pte').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.z===z)));$('ptinfo').innerHTML=ptInfo(P[z-1]);
+  const c=$('ptbody').querySelector(`.pte[data-z="${z}"]`),w=$('ptbody').querySelector('.ptwrap');if(scroll&&c)w.scrollLeft+=c.getBoundingClientRect().left-w.getBoundingClientRect().left-(w.clientWidth-c.offsetWidth)/2}
+function openPT(){const P=ptData(),hits=new Set();
+  // Outline the elements in the current problem (every Chemistry problem lists the masses it uses, like "Na = 22.99").
+  if(view==='practice'&&cur&&cur.subj==='chem')for(const m of plain(`${cur.ask||''} ${cur.story||cur.q||''}`).matchAll(/\b([A-Z][a-z]?) = \d/g))hits.add(m[1]);
+  const first=P.find(e=>hits.has(e.sym));
+  $('ptbody').innerHTML=`<div class="row" style="flex-wrap:nowrap"><h2 id="pttitle">Periodic table</h2><button class="xbtn" type="button" data-pt="close" aria-label="Close">✕</button></div>
+    ${hits.size?'<p class="note" style="margin:0">Elements in this problem are outlined.</p>':''}
+    <input type="search" id="ptfind" placeholder="Find an element: Na, sodium or 11" aria-label="Find an element" autocomplete="off" style="font:16px var(--body);padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);width:100%">
+    <div id="ptinfo">${ptInfo(first)}</div>
+    <div class="ptwrap"><div class="ptgrid">${P.map(e=>{const [r,c]=ptPos(e.z);return `<button type="button" class="pte c-${e.cat}${hits.has(e.sym)?' hit':''}" style="grid-row:${r};grid-column:${c}" data-z="${e.z}" aria-pressed="${!!first&&e.z===first.z}" aria-label="${e.name}, atomic number ${e.z}"><small>${e.z}</small>${e.sym}</button>`}).join('')}
+      <div class="ptph" style="grid-row:6;grid-column:3">57–71</div><div class="ptph" style="grid-row:7;grid-column:3">89–103</div><div class="ptgap" style="grid-row:8"></div></div></div>
+    <p class="note" style="margin:0" id="ptswipe">Swipe the table sideways to see all of it.</p>
+    <div class="ptlegend">${Object.entries(PT_CAT).map(([k,v])=>`<span><i class="c-${k}"></i>${v}</span>`).join('')}</div>`;
+  $('ptsheet').hidden=false;document.body.style.overflow='hidden';$('ptbody').scrollTop=0;
+  const w=$('ptbody').querySelector('.ptwrap');$('ptswipe').hidden=w.scrollWidth<=w.clientWidth+1;
+  if(first)ptSelect(first.z,true);
+  $('ptbody').querySelector('[data-pt="close"]').focus({preventScroll:true})}
+function closePT(){$('ptsheet').hidden=true;document.body.style.overflow=''}
+document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('[data-pt="open"]'))openPT()});
+$('ptsheet').addEventListener('click',e=>{if(e.target.id==='ptsheet'||e.target.closest('[data-pt="close"]'))return closePT();const b=e.target.closest('.pte');if(b)ptSelect(+b.dataset.z)});
+$('ptsheet').addEventListener('keydown',e=>{if(e.key==='Escape')closePT()});
+$('ptsheet').addEventListener('input',e=>{if(e.target.id!=='ptfind')return;const q=e.target.value.trim().toLowerCase(),P=ptData();if(!q)return;
+  const hit=/^\d+$/.test(q)?P[+q-1]:P.find(e=>e.sym.toLowerCase()===q)||P.find(e=>e.name.toLowerCase().startsWith(q))||P.find(e=>e.name.toLowerCase().includes(q));
+  if(hit)ptSelect(hit.z,true);else{$('ptbody').querySelectorAll('.pte').forEach(b=>b.setAttribute('aria-pressed','false'));$('ptinfo').innerHTML=ptInfo(null,e.target.value.trim())}});
 
 /* ---------- flashcards: flip cards, Study flashcards, Flashcard test ---------- */
 // A card is a TERMS entry [term, definition, example]. The front shows the term; tapping flips it to the back.
@@ -2796,7 +2867,7 @@ $('tsearch').addEventListener('input',e=>{tq=e.target.value;renderTerms()});
 $('quiz').addEventListener('change',e=>{tl.classList.toggle('quiz',e.target.checked);renderTerms()});
 function renderFormulas(){
   if(isCustom(subj))return renderAddTab();  // custom subjects get an Add tab instead of a formula sheet
-  $('formulas').innerHTML=FORM[subj].map((g,i)=>`<details class="fgroup"${i<2?' open':''}><summary>${g[0]}</summary><div class="ftable">${g[1].map(r=>`<div>${r[0]}</div><div>${r[1]}</div>`).join('')}</div></details>`).join('');
+  $('formulas').innerHTML=(subj==='chem'?'<div class="actions"><button class="btn" type="button" data-pt="open">Open the periodic table</button></div>':'')+FORM[subj].map((g,i)=>`<details class="fgroup"${i<2?' open':''}><summary>${g[0]}</summary><div class="ftable">${g[1].map(r=>`<div>${r[0]}</div><div>${r[1]}</div>`).join('')}</div></details>`).join('');
 }
 
 /* ================= reviews, goals, session ================= */
@@ -3352,6 +3423,7 @@ function appBack(){  // phone back button: close the top-most panel. Returns tru
   if(!$('cmgr').hidden){if(CM.screen==='item'){CM.screen='edit';CM.draft=null;CM.msg=''}else if(CM.screen==='edit'){CM.screen='list';CM.msg=''}else{closeMgr();return true}renderMgr();return true}
   if(!$('fbsheet').hidden){closeFeedback();return true}
   if(!$('frsheet').hidden){closeFormulaSheet();return true}
+  if(!$('ptsheet').hidden){closePT();return true}
   if(WM.open){closeMenu();return true}
   if(FC.mode&&view==='terms'){fcExit();return true}
   return false}
@@ -3575,6 +3647,16 @@ $('updx').onclick=()=>{$('updbar').hidden=true};
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkForUpdate()});
 setTimeout(checkForUpdate,3000);
 try{const u=new URL(location.href);if(u.searchParams.has('v')){u.searchParams.delete('v');history.replaceState(null,'',u.pathname+u.search+u.hash)}}catch(e){}
+
+/* ---------- offline mode ---------- */
+// sw.js (next to this file) saves a copy of the page and fonts, so once the site has been opened with
+// internet, it also opens without it. It always tries the network first, so updates still arrive.
+// Service workers only run on https (or localhost), so this does nothing when the file is opened directly.
+if('serviceWorker' in navigator&&(location.protocol==='https:'||/^(localhost|127\.0\.0\.1)$/.test(location.hostname)))
+  window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+const offlineNote=()=>toast('You’re offline. Everything still works except Send feedback.');
+window.addEventListener('offline',offlineNote);
+if(navigator.onLine===false)setTimeout(offlineNote,800);
 </script>
 
 
